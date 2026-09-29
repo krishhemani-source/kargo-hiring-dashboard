@@ -55,11 +55,9 @@ OPEN_PATHS = {"/api/login", "/api/logout", "/api/session"}
 @app.middleware("http")
 async def auth_gate(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/api/") and path not in OPEN_PATHS:
-        if not config.DASHBOARD_PASSWORD:
-            if config.ON_VERCEL:
-                return JSONResponse({"detail": "Set DASHBOARD_PASSWORD in the Vercel project settings."}, 503)
-        elif not _valid(request.cookies.get(COOKIE, "")):
+    # Login is optional: only enforced when DASHBOARD_PASSWORD is set.
+    if path.startswith("/api/") and path not in OPEN_PATHS and config.DASHBOARD_PASSWORD:
+        if not _valid(request.cookies.get(COOKIE, "")):
             return JSONResponse({"detail": "login required"}, 401)
     return await call_next(request)
 
@@ -70,8 +68,8 @@ class Login(BaseModel):
 
 @app.get("/api/session")
 def session(request: Request):
-    needs = bool(config.DASHBOARD_PASSWORD) or config.ON_VERCEL
-    ok = (not config.DASHBOARD_PASSWORD and not config.ON_VERCEL) or _valid(request.cookies.get(COOKIE, ""))
+    needs = bool(config.DASHBOARD_PASSWORD)
+    ok = not needs or _valid(request.cookies.get(COOKIE, ""))
     return {"login_required": needs, "logged_in": ok, "password_set": bool(config.DASHBOARD_PASSWORD)}
 
 

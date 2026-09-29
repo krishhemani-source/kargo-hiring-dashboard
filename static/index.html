@@ -449,10 +449,6 @@ window.addEventListener("beforeunload", e => { if (Object.keys(DIRTY).length) { 
 async function boot() {
   const s = await api("/api/session");
   $("#btnLogout").hidden = !s.login_required;
-  if (s.login_required && !s.password_set) {
-    document.body.innerHTML = `<div class="alert bad">Set DASHBOARD_PASSWORD in the hosting environment variables, then redeploy.</div>`;
-    return;
-  }
   if (!s.logged_in) return showLogin();
   try { await loadConfig(); await loadList(); }
   catch (e) { if (e.message !== "Please log in") $("#alerts").innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }

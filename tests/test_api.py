@@ -121,7 +121,8 @@ def test_password_gate(client, monkeypatch):
     assert client.get("/api/candidates").status_code == 401
 
 
-def test_vercel_requires_password(client, monkeypatch):
+def test_no_password_means_open(client, monkeypatch):
     from app import config
     monkeypatch.setattr(config, "ON_VERCEL", True)
-    assert client.get("/api/candidates").status_code == 503
+    assert client.get("/api/candidates").status_code == 200
+    assert client.get("/api/session").json()["login_required"] is False

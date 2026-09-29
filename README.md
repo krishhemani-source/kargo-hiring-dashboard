@@ -45,7 +45,7 @@ On Vercel the app keeps its data in **Neon Postgres** (`DATABASE_URL`), includin
 2. **Vercel:** click **Add New → Project**, import the repo, and leave the framework on **FastAPI** (it reads `pyproject.toml`, and the entrypoint is `app.main:app`).
 3. **Environment variables** (Project → Settings → Environment Variables). You can paste them as a block:
    - `GEMINI_API_KEY`, `RESEND_API_KEY`, `FOUNDER_EMAIL`, `TEST_MODE=true`
-   - `DASHBOARD_PASSWORD`: required on Vercel, because the dashboard holds candidates' personal details and can send email.
+   - Optional: `DASHBOARD_PASSWORD` turns on a login screen. Without it, anyone with the URL can open the dashboard.
    - Optional: `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`, `FROM_EMAIL`, `FOUNDER_NAME`, `SESSION_SECRET`
 4. **Neon:** open Project → **Storage → Create Database → Neon (Serverless Postgres)** and connect it to the project. This adds `DATABASE_URL` automatically. Tables are created on first use.
 5. **Redeploy** so the new variables take effect, then open the `.vercel.app` URL and log in.

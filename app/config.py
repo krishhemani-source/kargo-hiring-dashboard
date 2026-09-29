@@ -28,7 +28,7 @@ DATABASE_URL = (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or "").st
 DB_PATH = Path(os.getenv("DB_PATH", ROOT / "data" / "kargo.db"))
 
 ON_VERCEL = bool(os.getenv("VERCEL"))
-# Login for the dashboard. Required on Vercel; optional locally.
+# Optional login for the dashboard. Empty = no login.
 DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 # Each /process request must finish inside Vercel's function limit (maxDuration in vercel.json).
