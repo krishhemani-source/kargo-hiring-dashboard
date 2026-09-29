@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kargo Hiring Dashboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --ink: #1b1f24; --muted: #667085; --line: #e4e7ec;
+    --accent: #1f5eff; --accent-ink: #fff; --good: #117a3d; --good-bg: #e7f6ec;
+    --warn: #9a5b00; --warn-bg: #fff4e0; --bad: #b42318; --bad-bg: #fdecea; --chip: #eef1f5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 24px;
+           display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+  .badge.test { background: var(--warn-bg); color: var(--warn); }
+  .badge.live { background: var(--bad-bg); color: var(--bad); }
+  .counters { margin-left: auto; display: flex; gap: 10px; }
+  .counter { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; text-align: right; }
+  .counter b { display: block; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .counter span { font-size: 11px; color: var(--muted); }
+  .counter.zero b { color: var(--good); }
+  .counter.nonzero b { color: var(--bad); }
+  main { display: grid; grid-template-columns: minmax(460px, 1fr) minmax(420px, 1.1fr); gap: 16px; padding: 16px 24px; align-items: start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .card > .hd { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .card > .bd { padding: 14px 16px; }
+  h2 { font-size: 14px; margin: 0; }
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; }
+  .alert { margin: 12px 24px 0; padding: 10px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+  .alert.bad { background: var(--bad-bg); color: var(--bad); }
+  button, select, input, textarea { font: inherit; }
+  button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; color: var(--ink); }
+  button:hover { border-color: #c5cbd4; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  button.go { background: var(--good-bg); border-color: #b7e2c5; color: var(--good); font-weight: 600; }
+  button.stop { background: var(--bad-bg); border-color: #f5c2bd; color: var(--bad); font-weight: 600; }
+  button.on { outline: 2px solid currentColor; outline-offset: 1px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  select, input[type=text], textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--panel); color: var(--ink); width: 100%; }
+  textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+  .drop { display: block; border: 1.5px dashed #c5cbd4; border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--accent); background: #f0f4ff; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .upload-results { margin-top: 10px; font-size: 13px; }
+  .upload-results div { padding: 2px 0; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: none; background: transparent; padding: 6px 12px; border-radius: 8px; color: var(--muted); font-weight: 600; }
+  .tab.active { background: var(--chip); color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #fafbfc; }
+  tbody tr.sel { background: #f0f4ff; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pct { font-weight: 700; }
+  .bar { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+  .pill.pass, .pill.sent { background: var(--good-bg); color: var(--good); }
+  .pill.unclear, .pill.new { background: var(--warn-bg); color: var(--warn); }
+  .pill.fail, .pill.failed { background: var(--bad-bg); color: var(--bad); }
+  .pill.invite_ready { background: #e8efff; color: var(--accent); }
+  .pill.reject_ready { background: #f2eefc; color: #5b3ea8; }
+  .pill.applied { background: transparent; border: 1px solid var(--line); }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
+  .kv div:nth-child(odd) { color: var(--muted); }
+  .crit { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .crit .top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+  .dots { letter-spacing: 2px; color: var(--accent); white-space: nowrap; }
+  .dots .off { color: #d0d5dd; }
+  .crit .ev { margin-top: 5px; font-size: 13px; }
+  .crit .ev q { color: #344054; font-style: italic; }
+  .crit .why { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .brief p { margin: 0 0 8px; }
+  .brief ol { margin: 4px 0 0 18px; padding: 0; }
+  .brief li { margin-bottom: 4px; }
+  .decide { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .draft { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
+  .draft.chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .draft .row label { font-weight: 600; }
+  .events { font-size: 12px; color: var(--muted); }
+  .events div { padding: 2px 0; }
+  .spin { display: inline-block; width: 10px; height: 10px; border: 2px solid #c5cbd4; border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -1px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1b1f24; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; }
+  .toast.show { opacity: 1; }
+  .login { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .login[hidden] { display: none; }
+  .login-box { width: 100%; max-width: 340px; padding: 22px; }
+  .warnlist { margin: 6px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kargo Hiring Dashboard</h1>
+  <span id="modeBadge" class="badge">…</span>
+  <span id="modelBadge" class="badge"></span>
+  <div class="counters">
+    <div class="counter" id="cAwait"><b>0</b><span>haven't heard back</span></div>
+    <div class="counter"><b id="cProc">0</b><span>processing</span></div>
+    <div class="counter"><b id="cSent">0</b><span>sent</span></div>
+  </div>
+  <button id="btnLogout" hidden>Log out</button>
+</header>
+<div id="alerts"></div>
+
+<main>
+  <section>
+    <div class="card">
+      <div class="hd"><h2>Upload CVs</h2></div>
+      <div class="bd">
+        <div class="row" style="margin-bottom:10px">
+          <label for="role" class="muted">Role applied for</label>
+          <select id="role" style="width:auto">
+            <option value="PM">Product Manager (PM)</option>
+            <option value="SPM">Senior Product Manager (SPM)</option>
+          </select>
+        </div>
+        <label class="drop" id="drop">
+          <input type="file" id="files" accept=".pdf,.docx" multiple hidden>
+          <div><b>Drop PDF / DOCX files here</b> or click to choose. You can pick several at once.</div>
+        </label>
+        <div class="upload-results" id="uploadResults"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="hd">
+        <div class="tabs">
+          <button class="tab active" data-tab="PM">PM</button>
+          <button class="tab" data-tab="SPM">SPM</button>
+        </div>
+        <span class="muted small" id="tabHint" style="margin-left:auto"></span>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:32px">#</th><th>Candidate</th><th class="num" id="thScore">PM fit</th>
+          <th>Relocation</th><th>Status</th><th class="num" id="thOther">SPM fit</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="emptyList" class="empty" hidden>No candidates yet. Upload CVs above.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card" id="detail"><div class="empty">Select a candidate to see scores, evidence, the interview brief and email drafts.</div></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<div id="login" class="login" hidden>
+  <form class="card login-box" id="loginForm">
+    <h2 style="font-size:16px;margin-bottom:4px">Kargo Hiring Dashboard</h2>
+    <p class="muted small" style="margin:0 0 14px">Enter the dashboard password.</p>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required>
+    <button class="primary" style="width:100%;margin-top:10px">Log in</button>
+    <div id="loginErr" class="small" style="color:var(--bad);margin-top:8px"></div>
+  </form>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let CFG = null, TAB = "PM", LIST = [], SEL = null, DETAIL = null, DIRTY = {};
+const ROLE_LABEL = { PM: "Product Manager", SPM: "Senior Product Manager" };
+const STATUS_LABEL = { new: "Processing", scored: "Scored", invite_ready: "Invite ready", reject_ready: "Reject ready", sent: "Sent", failed: "Failed" };
+
+function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms); }
+async function api(path, opts = {}) {
+  const r = await fetch(path, { credentials: "same-origin", ...opts });
+  const body = await r.json().catch(() => ({}));
+  if (r.status === 401 && path !== "/api/login") { showLogin(); throw new Error("Please log in"); }
+  if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+  return body;
+}
+
+function showLogin() { $("#login").hidden = false; $("#pw").focus(); clearTimeout(loadList._h); }
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#loginErr").textContent = "";
+  try {
+    await api("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("#pw").value }) });
+    $("#pw").value = ""; $("#login").hidden = true; boot();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+});
+$("#btnLogout").onclick = async () => { await api("/api/logout", { method: "POST" }); showLogin(); };
+
+async function loadConfig() {
+  CFG = await api("/api/config");
+  const b = $("#modeBadge");
+  b.className = "badge " + (CFG.test_mode ? "test" : "live");
+  b.textContent = CFG.test_mode ? `TEST MODE · all email goes to ${CFG.founder_email || "(FOUNDER_EMAIL not set)"}` : "LIVE · emails go to candidates";
+  $("#modelBadge").textContent = CFG.model;
+  const a = [];
+  if (!CFG.llm_ready) a.push(`<div class="alert bad">GEMINI_API_KEY is not set (in <code>.env</code> locally, or the Vercel project's environment variables), so CVs can't be scored.</div>`);
+  if (!CFG.resend_ready) a.push(`<div class="alert">RESEND_API_KEY is not set. You can score and draft, but Send will fail.</div>`);
+  if (CFG.test_mode && !CFG.founder_email) a.push(`<div class="alert">TEST_MODE is on but FOUNDER_EMAIL is empty. Test sends need it.</div>`);
+  $("#alerts").innerHTML = a.join("");
+}
+
+async function loadList() {
+  const d = await api("/api/candidates");
+  LIST = d.candidates;
+  const aw = $("#cAwait");
+  aw.querySelector("b").textContent = d.counts.awaiting_reply;
+  aw.className = "counter " + (d.counts.awaiting_reply ? "nonzero" : "zero");
+  $("#cProc").textContent = d.counts.processing;
+  $("#cSent").textContent = d.counts.sent;
+  renderList();
+  if (SEL && !Object.keys(DIRTY).length) {
+    const c = LIST.find(x => x.id === SEL);
+    if (c && DETAIL && (c.status !== DETAIL.status || c.stage !== DETAIL.stage)) loadDetail(SEL);
+  }
+  pump();
+  clearTimeout(loadList._h);
+  loadList._h = setTimeout(loadList, d.counts.processing ? 3000 : 15000);
+}
+
+function scoreOf(c, role) { return role === "PM" ? c.pm_score : c.spm_score; }
+
+function renderList() {
+  const other = TAB === "PM" ? "SPM" : "PM";
+  $("#thScore").textContent = `${TAB} fit`;
+  $("#thOther").textContent = `${other} fit`;
+  const rows = [...LIST].sort((a, b) => (scoreOf(b, TAB) ?? -1) - (scoreOf(a, TAB) ?? -1) || a.id - b.id);
+  const applied = rows.filter(c => c.role_applied === TAB).length;
+  $("#tabHint").textContent = `${rows.length} candidates ranked on the ${TAB} rubric · ${applied} applied for ${TAB}`;
+  $("#emptyList").hidden = rows.length > 0;
+  let rank = 0;
+  $("#rows").innerHTML = rows.map(c => {
+    const s = scoreOf(c, TAB), o = scoreOf(c, other);
+    const hasScore = s != null;
+    if (hasScore) rank++;
+    const warn = (c.warnings || []).length ? ` <span title="${esc((c.warnings||[]).join("\n"))}" class="small" style="color:var(--warn)">⚠</span>` : "";
+    const better = hasScore && o != null && o - s >= 10 ? ` <span class="pill" title="Scores notably higher on the ${other} rubric">better as ${other}?</span>` : "";
+    const status = c.status === "new"
+      ? `<span class="pill new"><span class="spin"></span> ${esc(c.stage || "queued")}</span>`
+      : `<span class="pill ${c.status}">${STATUS_LABEL[c.status] || c.status}</span>`;
+    return `<tr data-id="${c.id}" class="${c.id === SEL ? "sel" : ""}">
+      <td class="muted">${hasScore ? rank : "–"}</td>
+      <td><b>${esc(c.name || c.filename)}</b>${warn}<br>
+        <span class="small muted">applied ${c.role_applied}${c.city ? " · " + esc(c.city) : ""}</span>${better}
+        ${c.status === "failed" ? `<div class="small" style="color:var(--bad)">${esc((c.error || "").slice(0, 120))}</div>` : ""}</td>
+      <td class="num">${hasScore ? `<span class="pct">${s.toFixed(0)}%</span><div class="bar"><i style="width:${s}%"></i></div>` : "–"}</td>
+      <td>${c.relocation ? `<span class="pill ${c.relocation}">${c.relocation}</span>` : "–"}</td>
+      <td>${status}</td>
+      <td class="num muted">${o != null ? o.toFixed(0) + "%" : "–"}</td>
+    </tr>`;
+  }).join("");
+}
+
+$("#rows").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-id]"); if (!tr) return;
+  if (Object.keys(DIRTY).length && !confirm("You have unsaved draft edits. Discard them?")) return;
+  DIRTY = {}; SEL = +tr.dataset.id; renderList(); loadDetail(SEL);
+});
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === b));
+  TAB = b.dataset.tab; renderList(); if (DETAIL) renderDetail();
+}));
+
+async function loadDetail(id) {
+  DETAIL = await api(`/api/candidates/${id}`);
+  renderDetail();
+}
+
+function dots(n) { return `<span class="dots">${"●".repeat(n)}<span class="off">${"●".repeat(5 - n)}</span></span>`; }
+
+function critBlock(detail) {
+  if (!detail) return `<div class="muted">Not scored yet.</div>`;
+  return detail.criteria.map(c => `<div class="crit">
+    <div class="top"><span>${esc(c.name)} <span class="muted small">· ${c.weight}%</span></span><span>${dots(c.score)} <span class="small">${c.score}/5</span></span></div>
+    <div class="ev"><q>${esc(c.evidence)}</q></div>
+    <div class="why">${esc(c.reason)}</div></div>`).join("");
+}
+
+function renderDetail() {
+  const c = DETAIL; if (!c) return;
+  const el = $("#detail");
+  const sent = c.status === "sent";
+  const scored = !["new", "failed"].includes(c.status);
+  const showRole = TAB;
+  const det = showRole === "PM" ? c.pm_detail : c.spm_detail;
+  const pct = showRole === "PM" ? c.pm_score : c.spm_score;
+  const other = showRole === "PM" ? "SPM" : "PM";
+  const otherPct = other === "PM" ? c.pm_score : c.spm_score;
+  const b = c.brief;
+  const recipient = CFG.test_mode ? `${CFG.founder_email || "FOUNDER_EMAIL"} (test; subject tagged → ${c.email || "no email"})` : (c.email || "no email on CV");
+
+  el.innerHTML = `
+  <div class="hd">
+    <div><h2 style="font-size:16px">${esc(c.name || c.filename)}</h2>
+    <div class="small muted">Applied for ${ROLE_LABEL[c.role_applied]} · <a href="/api/candidates/${c.id}/file" target="_blank">original CV</a></div></div>
+    <div style="margin-left:auto" class="row">
+      ${c.status === "failed" || c.status === "new" ? "" : `<span class="pill ${c.status}">${STATUS_LABEL[c.status]}</span>`}
+      ${!sent && c.status !== "new" ? `<button id="btnRetry" title="Re-extract and re-score">Re-score</button>` : ""}
+    </div>
+  </div>
+  <div class="bd">
+    ${c.status === "new" ? `<div class="alert" style="margin:0 0 12px"><span class="spin"></span> ${esc(c.stage || "queued")}…</div>` : ""}
+    ${c.status === "failed" ? `<div class="alert bad" style="margin:0 0 12px"><b>Failed:</b> ${esc(c.error)}</div>` : ""}
+    <div class="kv">
+      <div>Email</div><div>${esc(c.email) || '<span style="color:var(--bad)">not found</span>'}</div>
+      <div>Phone</div><div>${esc(c.phone) || "–"}</div>
+      <div>Location</div><div>${esc(c.city) || "–"}</div>
+      <div>Links</div><div>${(c.links || []).map(l => esc(l)).join("<br>") || "–"}</div>
+      <div>Relocation</div><div>${c.relocation ? `<span class="pill ${c.relocation}">${c.relocation}</span> <span class="small muted">${esc(c.relocation_note)}</span>` : "–"} <span class="small muted">(gate, not scored)</span></div>
+    </div>
+    ${(c.warnings || []).length ? `<ul class="warnlist">${c.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
+
+    ${scored ? `
+    <h3>Interview brief</h3>
+    <div class="brief">${b ? `<p>${esc(b.who)}</p><p><b>Why here:</b> ${esc(b.why_ranked)}</p>
+      <b>Probe in the interview</b><ol>${b.probes.map(p => `<li>${esc(p)}</li>`).join("")}</ol>` : `<span class="muted">No brief yet.</span>`}
+    </div>
+
+    <h3>${showRole} rubric · <span style="color:var(--ink)">${pct != null ? pct.toFixed(1) + "%" : "–"}</span>
+      <span class="muted" style="text-transform:none;letter-spacing:0">&nbsp;(${other}: ${otherPct != null ? otherPct.toFixed(1) + "%" : "–"}, switch tabs to see it)</span></h3>
+    ${critBlock(det)}
+    <div class="small muted">Weighted % = Σ(score × weight) / 5, calculated by the backend. Scored by ${esc(c.model || "")}.</div>
+
+    <h3>Decision</h3>
+    <div class="decide">
+      <div class="row">
+        <button class="go ${c.decision === "invite" ? "on" : ""}" id="btnInvite" ${sent ? "disabled" : ""}>Move forward</button>
+        <button class="stop ${c.decision === "reject" ? "on" : ""}" id="btnReject" ${sent ? "disabled" : ""}>Pass</button>
+        <input type="text" id="note" maxlength="300" placeholder="Optional one-line note (saved with a timestamp)" value="${esc(c.decision_note || "")}" style="flex:1;min-width:180px" ${sent ? "disabled" : ""}>
+      </div>
+      ${c.decided_at ? `<div class="small muted" style="margin-top:6px">Decided ${new Date(c.decided_at).toLocaleString()}</div>` : ""}
+    </div>
+
+    ${["invite", "reject"].map(k => `
+    <div class="draft ${c.decision === k ? "chosen" : ""}">
+      <div class="row" style="justify-content:space-between"><label>${k === "invite" ? "Invite draft" : "Rejection draft"}</label>
+        <span class="small muted" id="saved-${k}"></span></div>
+      <input type="text" id="subj-${k}" value="${esc(c[k + "_subject"])}" style="margin:8px 0" ${sent ? "disabled" : ""}>
+      <textarea id="body-${k}" ${sent ? "disabled" : ""}>${esc(c[k + "_body"])}</textarea>
+      ${!sent ? `<div class="row" style="margin-top:8px"><button id="save-${k}">Save edits</button></div>` : ""}
+    </div>`).join("")}
+    ${!sent ? `<div class="row" style="margin-top:8px"><button id="btnRedraft" class="small">Regenerate both drafts</button></div>` : ""}
+
+    <h3>Send</h3>
+    ${sent ? `<div class="alert" style="margin:0;background:var(--good-bg);color:var(--good)">Sent ${new Date(c.sent_at).toLocaleString()} to ${esc(c.sent_to)}<br><span class="small">Subject: ${esc(c.sent_subject)} · Resend id ${esc(c.resend_id)}</span></div>`
+      : `<div class="row"><button class="primary" id="btnSend" ${c.decision ? "" : "disabled"}>Send ${c.decision === "invite" ? "invite" : c.decision === "reject" ? "rejection" : "email"}</button>
+        <span class="small muted">${c.decision ? "To: " + esc(recipient) : "Choose Move forward or Pass first."}</span></div>`}
+    ${c.send_error && !sent ? `<div class="alert bad" style="margin:8px 0 0">${esc(c.send_error)}</div>` : ""}
+    ` : ""}
+
+    <h3>Audit trail</h3>
+    <div class="events">${(c.events || []).map(e => `<div>${new Date(e.ts).toLocaleString()} · <b>${esc(e.action)}</b> ${esc(e.detail)}</div>`).join("")}</div>
+  </div>`;
+
+  const on = (id, fn) => { const x = $("#" + id); if (x) x.onclick = fn; };
+  on("btnRetry", async () => { await api(`/api/candidates/${c.id}/retry`, { method: "POST" }); toast("Re-scoring…"); loadList(); loadDetail(c.id); });
+  on("btnRedraft", async () => {
+    const btn = $("#btnRedraft"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Regenerating…`;
+    try { DETAIL = await api(`/api/candidates/${c.id}/redraft`, { method: "POST" }); DIRTY = {}; toast("New drafts ready"); renderDetail(); }
+    catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = "Regenerate both drafts"; }
+  });
+  const decide = async d => {
+    await saveDirty();
+    try { DETAIL = await api(`/api/candidates/${c.id}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: d, note: $("#note").value }) }); renderDetail(); loadList(); }
+    catch (e) { toast(e.message); }
+  };
+  on("btnInvite", () => decide("invite"));
+  on("btnReject", () => decide("reject"));
+  ["invite", "reject"].forEach(k => {
+    on("save-" + k, () => saveDraft(k));
+    ["subj-" + k, "body-" + k].forEach(id => { const x = $("#" + id); if (x) x.oninput = () => { DIRTY[k] = true; $("#saved-" + k).textContent = "unsaved"; }; });
+  });
+  on("btnSend", async () => {
+    await saveDirty();
+    const kind = c.decision === "invite" ? "invite" : "rejection";
+    if (!confirm(`Send the ${kind} email to ${recipient}?`)) return;
+    const btn = $("#btnSend"); btn.disabled = true; btn.textContent = "Sending…";
+    try { DETAIL = await api(`/api/candidates/${c.id}/send`, { method: "POST" }); toast("Sent ✓"); renderDetail(); loadList(); }
+    catch (e) { toast("Send failed: " + e.message, 6000); loadDetail(c.id); }
+  });
+}
+
+async function saveDraft(k) {
+  const c = DETAIL;
+  await api(`/api/candidates/${c.id}/draft`, { method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: k, subject: $("#subj-" + k).value, body: $("#body-" + k).value }) });
+  c[k + "_subject"] = $("#subj-" + k).value; c[k + "_body"] = $("#body-" + k).value;
+  delete DIRTY[k]; const s = $("#saved-" + k); if (s) s.textContent = "saved";
+}
+async function saveDirty() { for (const k of Object.keys(DIRTY)) await saveDraft(k); }
+
+// ---- processing: the browser drives scoring, one request per CV (works on serverless hosts) ----
+const INFLIGHT = new Set(), MAX_PARALLEL = 2;
+function isStale(c) { return c.claimed_at && Date.now() - new Date(c.claimed_at).getTime() > 6 * 60 * 1000; }
+function pump() {
+  const todo = LIST.filter(c => c.status === "new" && !INFLIGHT.has(c.id) && (c.stage === "queued" || isStale(c)))
+                   .sort((a, b) => a.id - b.id);
+  while (INFLIGHT.size < MAX_PARALLEL && todo.length) {
+    const c = todo.shift();
+    INFLIGHT.add(c.id);
+    c.stage = "scoring";
+    api(`/api/candidates/${c.id}/process`, { method: "POST" })
+      .catch(e => { if (!/already being processed/.test(e.message)) toast(`${c.name || c.filename}: ${e.message}`, 6000); })
+      .finally(() => { INFLIGHT.delete(c.id); loadList(); });
+  }
+}
+window.addEventListener("beforeunload", e => { if (INFLIGHT.size) { e.preventDefault(); e.returnValue = ""; } });
+
+// ---- upload ----
+const drop = $("#drop"), input = $("#files");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); upload(e.dataTransfer.files); });
+input.addEventListener("change", () => { upload(input.files); input.value = ""; });
+
+async function upload(files) {
+  files = [...files];
+  if (!files.length) return;
+  const role = $("#role").value, out = $("#uploadResults"), lines = [];
+  const show = (extra = "") => { out.innerHTML = lines.join("") + extra; };
+  // One file per request: keeps each request under hosting body-size limits and isolates failures.
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    show(`<div><span class="spin"></span> Uploading ${i + 1} of ${files.length}…</div>`);
+    const fd = new FormData();
+    fd.append("role", role);
+    fd.append("files", f);
+    try {
+      const x = (await api("/api/upload", { method: "POST", body: fd })).results[0];
+      lines.push(x.error ? `<div style="color:var(--bad)">✕ ${esc(x.filename)}: ${esc(x.error)}</div>`
+        : x.duplicate_of ? `<div style="color:var(--warn)">↺ ${esc(x.filename)}: already uploaded (${esc(x.name || "#" + x.duplicate_of)})</div>`
+        : `<div style="color:var(--good)">✓ ${esc(x.filename)}: queued for scoring</div>`);
+    } catch (e) { lines.push(`<div style="color:var(--bad)">✕ ${esc(f.name)}: ${esc(e.message)}</div>`); }
+    show();
+    if (i % 3 === 2) loadList();  // start scoring while the rest upload
+  }
+  loadList();
+}
+
+window.addEventListener("beforeunload", e => { if (Object.keys(DIRTY).length) { e.preventDefault(); e.returnValue = ""; } });
+async function boot() {
+  const s = await api("/api/session");
+  $("#btnLogout").hidden = !s.login_required;
+  if (s.login_required && !s.password_set) {
+    document.body.innerHTML = `<div class="alert bad">Set DASHBOARD_PASSWORD in the hosting environment variables, then redeploy.</div>`;
+    return;
+  }
+  if (!s.logged_in) return showLogin();
+  try { await loadConfig(); await loadList(); }
+  catch (e) { if (e.message !== "Please log in") $("#alerts").innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }
+}
+boot();
+</script>
+</body>
+</html>

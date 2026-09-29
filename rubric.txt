@@ -1,0 +1,96 @@
+KARGO HIRING RUBRIC - PM & SENIOR PM
+Derived from 8 past hires (Exceeds: Rohan, Sunita, Aditya, Meghna, Lavanya | Meets: Vikram, Rahul | Below: Preetham)
+
+Key insight: Spec fit did not predict success. Vikram (3 yrs PM, XLRI MBA, Product School CPO)
+= Meets. Lavanya (2 yrs PM) = Exceeds.
+
+======================================================================
+PATTERNS IN HIGH-RATED HIRES NOT IN THE JDs
+======================================================================
+
+1. Did the work before building for it (5/5 Exceeds, 0/3 others)
+   All high performers spent years in hands-on freight operations before their current
+   function: Rohan (CHA documentation, JNPT), Sunita (forwarder documentation/customs),
+   Aditya (port services, Nhava Sheva), Meghna (forwarder documentation),
+   Lavanya (carrier ops, Mahindra Logistics).
+   JDs only ask for "curiosity" (PM) or "familiarity" as an advantage (SPM),
+   not having done the job.
+
+2. Owned breakages beyond their role (5/5 vs 0/3)
+   Meghna: overnight customs hold resolved before client knew. Sunita: weekend workflow
+   redesign after vendor format change. Aditya: converted 3 accounts during a competitor's
+   port congestion failure. Lavanya: wrote and closed out outage post-mortem. Rohan: caught
+   a failing data vendor and led migration.
+   Preetham's incident work was an assigned on-call rotation; Vikram and Rahul show only wins.
+
+3. Unprompted fixes adopted by the people doing the work
+   Rohan's Excel tracker (12-person ops team in 2 weeks), Sunita's SOPs (adopted in 60 days),
+   Meghna's onboarding checklist (team standard), Lavanya's visibility dashboard (spread to
+   2 other regional teams).
+   Weakest discriminator: Vikram and Rahul also had adopted artifacts, but for their own
+   function, not frontline operators.
+
+Caveat: n=8, only 2 PM hires. Treat these as hypotheses.
+
+======================================================================
+PM RUBRIC  (score each criterion 1-5, multiply by weight)
+======================================================================
+
+1. Hands-on operations experience ............................ 30%
+   1 = Knows domain only via calls/reading
+   5 = 2+ yrs personally doing freight/logistics/ops work
+
+2. Shipping & kill judgment .................................. 20%
+   1 = Feature lists, no outcomes
+   5 = Shipped in short cycles, killed features on data, explains why
+
+3. Unprompted fix that got adopted ........................... 20%
+   1 = Only assigned work
+   5 = Built tool/process unasked; peers/users adopted fast
+
+4. Owns breakages ............................................ 15%
+   1 = No incidents, or escalated only
+   5 = Fixed a live failure outside their remit and documented it
+
+5. Works without structure ................................... 15%
+   1 = Joined an established PM org with a playbook
+   5 = Sole owner; built own rhythms and templates
+
+   TOTAL ..................................................... 100%
+
+======================================================================
+SENIOR PM RUBRIC  (score each criterion 1-5, multiply by weight)
+======================================================================
+
+1. Platform/integration ownership & hard calls ............... 25%
+   1 = Features only; senior PM made calls
+   5 = Owned integration/data layer; made build/configure/avoid calls
+
+2. Hands-on operations experience ............................ 25%
+   1 = Domain known from a distance
+   5 = Personally did docs/customs/carrier/port work
+
+3. Reliability & breakage ownership .......................... 15%
+   1 = No incidents shown
+   5 = Led vendor migrations, outages, data-quality fixes to closure
+
+4. Set standards others adopted .............................. 15%
+   1 = Followed existing process
+   5 = Created practices other teams took up
+
+5. Commercial / customer impact .............................. 10%
+   1 = No link to revenue or customers
+   5 = Integration they owned unblocked a deal or opened a segment
+
+6. Early-stage tenure (5-8 yrs) .............................. 10%
+   1 = Only large, structured companies
+   5 = Operated where rules weren't written; no layer above
+
+   TOTAL ..................................................... 100%
+
+----------------------------------------------------------------------
+Gate (pass/fail, not weighted): Mumbai-based or willing to relocate; in-office.
+
+Scoring: Weighted score (%) = sum(score x weight) / 5
+Sanity check on past PM hires (by eye): Lavanya ~97%, Vikram ~43%, which matches
+their ratings. Partly circular, since the patterns came from these same hires.
