@@ -22,6 +22,9 @@ def ensure_ready():
     """Create tables once per process (cold start), lazily so a bad DATABASE_URL shows as an error, not a crash."""
     global _ready
     if not _ready:
+        if config.ON_VERCEL and not config.DATABASE_URL:
+            raise HTTPException(503, "No database connected. In Vercel: Storage → Create Database → Neon, "
+                                     "connect it to this project, then redeploy.")
         db.init()
         load_rubrics()  # fail fast if rubric.txt is malformed
         _ready = True
