@@ -123,6 +123,13 @@ def test_password_gate(client, monkeypatch):
 
 def test_no_password_means_open(client, monkeypatch):
     from app import config
-    monkeypatch.setattr(config, "ON_VERCEL", True)
     assert client.get("/api/candidates").status_code == 200
     assert client.get("/api/session").json()["login_required"] is False
+
+
+def test_vercel_without_database_explains(client, monkeypatch):
+    from app import config, main
+    monkeypatch.setattr(config, "ON_VERCEL", True)
+    monkeypatch.setattr(main, "_ready", False)
+    r = client.get("/api/candidates")
+    assert r.status_code == 503 and "Neon" in r.json()["detail"]
