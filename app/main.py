@@ -280,6 +280,7 @@ def redraft(cid: int):
         raise HTTPException(409, "can only redraft a scored, unsent candidate")
     try:
         pipeline.generate_drafts(cid)
+        db.update(cid, stage=None, error=None)
     except Exception as e:
         db.update(cid, stage=None)
         raise HTTPException(502, f"Drafting failed: {e}")

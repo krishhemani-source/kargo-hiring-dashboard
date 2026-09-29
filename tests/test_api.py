@@ -133,3 +133,14 @@ def test_vercel_without_database_explains(client, monkeypatch):
     monkeypatch.setattr(main, "_ready", False)
     r = client.get("/api/candidates")
     assert r.status_code == 503 and "Neon" in r.json()["detail"]
+
+
+def test_draft_failure_keeps_scores(client, monkeypatch):
+    from app import llm
+    monkeypatch.setattr(llm, "draft_brief_and_emails", lambda *a, **k: (_ for _ in ()).throw(llm.LLMError("503 overloaded")))
+    good = (ROOT / "seed" / "cv_06_meghna_tiwari.docx").read_bytes()
+    cid = client.post("/api/upload", data={"role": "PM"}, files=[("files", ("m.docx", good))]).json()["results"][0]["id"]
+    d = client.post(f"/api/candidates/{cid}/process").json()
+    assert d["status"] == "scored" and d["pm_score"] is not None
+    assert "Regenerate" in d["error"] and not d["invite_body"]
+    monkeypatch.undo()

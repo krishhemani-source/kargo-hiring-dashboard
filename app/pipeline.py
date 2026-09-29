@@ -63,8 +63,14 @@ def process(cid: int) -> None:
                   model=", ".join(llm.models_used()) or config.GEMINI_MODEL, scored_at=db.now())
         db.log(cid, "scored", f"PM {scores['PM']['pct']}% / SPM {scores['SPM']['pct']}%")
 
-        generate_drafts(cid)
-        db.update(cid, status="scored", stage=None)
+        try:
+            generate_drafts(cid)
+            db.update(cid, status="scored", stage=None, error=None)
+        except Exception as e:  # keep the scores; drafts can be regenerated from the dashboard
+            traceback.print_exc()
+            db.update(cid, status="scored", stage=None,
+                      error=f"Scored, but the email drafts failed ({e}). Click 'Regenerate both drafts'.")
+            db.log(cid, "draft_failed", str(e))
     except PIILeak as e:
         db.update(cid, status="failed", stage=None, error=str(e))
         db.log(cid, "blocked", str(e))

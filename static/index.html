@@ -308,7 +308,8 @@ function renderDetail() {
   </div>
   <div class="bd">
     ${c.status === "new" ? `<div class="alert" style="margin:0 0 12px"><span class="spin"></span> ${esc(c.stage || "queued")}…</div>` : ""}
-    ${c.status === "failed" ? `<div class="alert bad" style="margin:0 0 12px"><b>Failed:</b> ${esc(c.error)}</div>` : ""}
+    ${c.status === "failed" ? `<div class="alert bad" style="margin:0 0 12px"><b>Failed:</b> ${esc(c.error)}</div>`
+      : c.error && c.status !== "new" ? `<div class="alert" style="margin:0 0 12px">${esc(c.error)}</div>` : ""}
     <div class="kv">
       <div>Email</div><div>${esc(c.email) || '<span style="color:var(--bad)">not found</span>'}</div>
       <div>Phone</div><div>${esc(c.phone) || "–"}</div>
