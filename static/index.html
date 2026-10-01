@@ -3,177 +3,239 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kargo Hiring Dashboard</title>
+<title>Kargo Hiring</title>
 <style>
   :root {
-    --bg: #f6f7f9; --panel: #fff; --ink: #1b1f24; --muted: #667085; --line: #e4e7ec;
-    --accent: #1f5eff; --accent-ink: #fff; --good: #117a3d; --good-bg: #e7f6ec;
-    --warn: #9a5b00; --warn-bg: #fff4e0; --bad: #b42318; --bad-bg: #fdecea; --chip: #eef1f5;
+    --bg: #f5f6f8; --panel: #fff; --ink: #161a1f; --muted: #6b7280; --faint: #9aa1ab; --line: #e6e8ec; --hover: #f8f9fb;
+    --accent: #2156f3; --accent-soft: #eaf0ff; --good: #11804a; --good-soft: #e6f6ee; --good-line: #b6e3c9;
+    --warn: #9a5b00; --warn-soft: #fff5e3; --bad: #b42318; --bad-soft: #fdeceb; --bad-line: #f5c4bf; --chip: #eff1f4;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --panel: #171b21; --ink: #e8eaed; --muted: #9aa1ab; --faint: #6b7280; --line: #262c34; --hover: #1c2128;
+      --accent: #6b8cff; --accent-soft: #1c2540; --good: #4cc58a; --good-soft: #12291e; --good-line: #1f4d36;
+      --warn: #e0a84a; --warn-soft: #2a2112; --bad: #f2786d; --bad-soft: #2d1716; --bad-line: #5a2a26; --chip: #222830; --shadow: none; }
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
-  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 24px;
-           display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
-  .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
-  .badge.test { background: var(--warn-bg); color: var(--warn); }
-  .badge.live { background: var(--bad-bg); color: var(--bad); }
-  .counters { margin-left: auto; display: flex; gap: 10px; }
-  .counter { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; text-align: right; }
-  .counter b { display: block; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .counter span { font-size: 11px; color: var(--muted); }
-  .counter.zero b { color: var(--good); }
-  .counter.nonzero b { color: var(--bad); }
-  main { display: grid; grid-template-columns: minmax(460px, 1fr) minmax(420px, 1.1fr); gap: 16px; padding: 16px 24px; align-items: start; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
-  .card > .hd { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
-  .card > .bd { padding: 14px 16px; }
-  h2 { font-size: 14px; margin: 0; }
-  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; }
-  .alert { margin: 12px 24px 0; padding: 10px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
-  .alert.bad { background: var(--bad-bg); color: var(--bad); }
-  button, select, input, textarea { font: inherit; }
-  button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; color: var(--ink); }
-  button:hover { border-color: #c5cbd4; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-  button.go { background: var(--good-bg); border-color: #b7e2c5; color: var(--good); font-weight: 600; }
-  button.stop { background: var(--bad-bg); border-color: #f5c2bd; color: var(--bad); font-weight: 600; }
-  button.on { outline: 2px solid currentColor; outline-offset: 1px; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  select, input[type=text], textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--panel); color: var(--ink); width: 100%; }
-  textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
-  .drop { display: block; border: 1.5px dashed #c5cbd4; border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer; }
-  .drop.over { border-color: var(--accent); background: #f0f4ff; }
-  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .upload-results { margin-top: 10px; font-size: 13px; }
-  .upload-results div { padding: 2px 0; }
-  .tabs { display: flex; gap: 4px; }
-  .tab { border: none; background: transparent; padding: 6px 12px; border-radius: 8px; color: var(--muted); font-weight: 600; }
-  .tab.active { background: var(--chip); color: var(--ink); }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-  td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  tbody tr { cursor: pointer; }
-  tbody tr:hover { background: #fafbfc; }
-  tbody tr.sel { background: #f0f4ff; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .pct { font-weight: 700; }
-  .bar { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--faint); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  button.ghost:hover:not(:disabled) { color: var(--ink); background: var(--chip); }
+  select, input[type=text], input[type=password], textarea { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel); width: 100%; }
+  select:focus, input:focus, textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  textarea { min-height: 220px; resize: vertical; line-height: 1.55; }
+  kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); background: var(--panel); }
+
+  /* top bar */
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+           padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: -.01em; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+  .badge.test { background: var(--warn-soft); color: var(--warn); }
+  .badge.live { background: var(--bad-soft); color: var(--bad); }
+  .stats { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .stat { display: flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .stat b { font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat.hot b { color: var(--bad); }
+  .stat.done b { color: var(--good); }
+  .alerts:empty { display: none; }
+  .alerts { padding: 10px 20px 0; display: grid; gap: 8px; }
+  .alert { padding: 9px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-size: 13px; }
+  .alert.bad { background: var(--bad-soft); color: var(--bad); }
+  .alert.ok { background: var(--good-soft); color: var(--good); }
+
+  /* layout */
+  main { display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 16px; padding: 16px 20px; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } header { padding: 10px 16px; } .stats { margin-left: 0; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .side { position: sticky; top: 64px; display: grid; gap: 12px; }
+  @media (max-width: 900px) { .side { position: static; } }
+
+  /* upload */
+  .upload { padding: 12px; display: grid; gap: 8px; }
+  .upload .row { display: flex; gap: 8px; align-items: center; }
+  .upload select { width: auto; flex: 1; }
+  .drop { display: block; border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; text-align: center; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+  .upload-results { font-size: 12px; max-height: 120px; overflow: auto; }
+  .upload-results:empty { display: none; }
+
+  /* list */
+  .list-hd { padding: 10px 12px 8px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+  .seg { display: inline-flex; background: var(--chip); border-radius: 8px; padding: 2px; }
+  .seg button { border: none; background: transparent; padding: 4px 12px; border-radius: 6px; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .seg button.on { background: var(--panel); color: var(--ink); box-shadow: var(--shadow); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+  .chip span { opacity: .7; margin-left: 3px; font-variant-numeric: tabular-nums; }
+  .list { max-height: calc(100vh - 330px); min-height: 200px; overflow: auto; }
+  @media (max-width: 900px) { .list { max-height: none; } }
+  .item { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .item:hover { background: var(--hover); }
+  .item.sel { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .item .rank { color: var(--faint); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+  .item .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .right { text-align: right; display: grid; gap: 3px; justify-items: end; }
+  .fit { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { width: 56px; height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); }
-  .muted { color: var(--muted); }
-  .small { font-size: 12px; }
-  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
-  .pill.pass, .pill.sent { background: var(--good-bg); color: var(--good); }
-  .pill.unclear, .pill.new { background: var(--warn-bg); color: var(--warn); }
-  .pill.fail, .pill.failed { background: var(--bad-bg); color: var(--bad); }
-  .pill.invite_ready { background: #e8efff; color: var(--accent); }
-  .pill.reject_ready { background: #f2eefc; color: #5b3ea8; }
-  .pill.applied { background: transparent; border: 1px solid var(--line); }
-  .empty { padding: 30px; text-align: center; color: var(--muted); }
-  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
-  .kv div:nth-child(odd) { color: var(--muted); }
-  .crit { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-  .crit .top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
-  .dots { letter-spacing: 2px; color: var(--accent); white-space: nowrap; }
-  .dots .off { color: #d0d5dd; }
-  .crit .ev { margin-top: 5px; font-size: 13px; }
-  .crit .ev q { color: #344054; font-style: italic; }
-  .crit .why { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .list-ft { padding: 8px 12px; font-size: 11px; color: var(--faint); display: flex; gap: 10px; flex-wrap: wrap; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+  .pill.review { background: var(--warn-soft); color: var(--warn); }
+  .pill.invite, .pill.pass, .pill.sent { background: var(--good-soft); color: var(--good); }
+  .pill.reject { background: var(--chip); color: var(--ink); }
+  .pill.failed, .pill.fail { background: var(--bad-soft); color: var(--bad); }
+  .pill.wait, .pill.unclear { background: var(--warn-soft); color: var(--warn); }
+
+  /* detail */
+  .detail { min-height: 300px; }
+  .d-head { padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .d-head h2 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  .d-meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .d-contact { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+  .d-contact span { color: var(--muted); }
+  .d-contact b { font-weight: 500; color: var(--ink); }
+  .big { margin-left: auto; text-align: right; }
+  .big b { display: block; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .big span { font-size: 12px; color: var(--muted); }
+  .sec { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .sec:last-child { border-bottom: none; }
+  .sec h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .sec h3 .n { width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--panel); display: inline-grid; place-items: center; font-size: 11px; letter-spacing: 0; }
+  .sec h3 .n.done { background: var(--good); }
+  .sec.dim h3 .n { background: var(--faint); }
   .brief p { margin: 0 0 8px; }
-  .brief ol { margin: 4px 0 0 18px; padding: 0; }
+  .brief ol { margin: 6px 0 0 18px; padding: 0; }
   .brief li { margin-bottom: 4px; }
-  .decide { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-  .draft { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 10px; }
-  .draft.chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .draft .row label { font-weight: 600; }
-  .events { font-size: 12px; color: var(--muted); }
-  .events div { padding: 2px 0; }
-  .spin { display: inline-block; width: 10px; height: 10px; border: 2px solid #c5cbd4; border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -1px; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary h3 { margin: 0; }
+  details > summary h3::before { content: "▸"; font-size: 10px; transition: transform .15s; }
+  details[open] > summary h3::before { transform: rotate(90deg); }
+  details[open] > summary { margin-bottom: 10px; }
+  .crit { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .crit:first-of-type { border-top: none; }
+  .crit .name { font-weight: 600; }
+  .crit .w { color: var(--faint); font-weight: 400; font-size: 12px; }
+  .crit .ev { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+  .crit .ev q { color: var(--ink); font-style: italic; }
+  .dots { letter-spacing: 2px; color: var(--accent); white-space: nowrap; font-size: 12px; }
+  .dots .off { color: var(--line); }
+
+  .decide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice { padding: 14px; border-radius: 10px; font-weight: 600; font-size: 15px; display: grid; gap: 2px; text-align: left; }
+  .choice small { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .choice.fwd:hover:not(:disabled), .choice.fwd.on { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+  .choice.pass:hover:not(:disabled), .choice.pass.on { border-color: var(--bad-line); background: var(--bad-soft); color: var(--bad); }
+  .choice.on { box-shadow: 0 0 0 1px currentColor; }
+  .note { margin-top: 10px; }
+  .email-hd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .email-hd .kind { font-weight: 600; font-size: 15px; }
+  .email-hd select { width: auto; margin-left: auto; font-size: 13px; padding: 5px 8px; }
+  .field-label { font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+  .send-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .send-bar .to { font-size: 12px; color: var(--muted); flex: 1; min-width: 180px; }
+  .saved { font-size: 12px; color: var(--faint); }
+  .sent-box { background: var(--good-soft); color: var(--good); border-radius: 10px; padding: 12px 14px; }
+  .sent-box pre { white-space: pre-wrap; font: inherit; color: var(--ink); margin: 10px 0 0; background: var(--panel); border-radius: 8px; padding: 10px 12px; }
+  .placeholder { color: var(--muted); font-size: 13px; }
+  .events { font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+  .warnlist { margin: 8px 0 0; padding-left: 18px; color: var(--warn); font-size: 12px; }
+  .spin { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s .8s linear infinite; vertical-align: -1px; }
   @keyframes s { to { transform: rotate(360deg); } }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1b1f24; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #161a1f; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; z-index: 20; }
   .toast.show { opacity: 1; }
-  .login { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .login { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
   .login[hidden] { display: none; }
   .login-box { width: 100%; max-width: 340px; padding: 22px; }
-  .warnlist { margin: 6px 0 0; padding-left: 18px; color: var(--warn); font-size: 13px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Kargo Hiring Dashboard</h1>
+  <h1>Kargo Hiring</h1>
   <span id="modeBadge" class="badge">…</span>
-  <span id="modelBadge" class="badge"></span>
-  <div class="counters">
-    <div class="counter" id="cAwait"><b>0</b><span>haven't heard back</span></div>
-    <div class="counter"><b id="cProc">0</b><span>processing</span></div>
-    <div class="counter"><b id="cSent">0</b><span>sent</span></div>
+  <div class="stats">
+    <div class="stat" id="sReview"><b>0</b> to review</div>
+    <div class="stat" id="sReady"><b>0</b> ready to send</div>
+    <div class="stat" id="sAwait"><b>0</b> haven't heard back</div>
+    <div class="stat done" id="sSent"><b>0</b> sent</div>
   </div>
-  <button id="btnLogout" hidden>Log out</button>
+  <button id="btnLogout" class="ghost" hidden>Log out</button>
 </header>
-<div id="alerts"></div>
+<div class="alerts" id="alerts"></div>
 
 <main>
-  <section>
+  <aside class="side">
+    <div class="card upload">
+      <div class="row">
+        <select id="role" aria-label="Role applied for">
+          <option value="PM">Uploading for: Product Manager</option>
+          <option value="SPM">Uploading for: Senior Product Manager</option>
+        </select>
+      </div>
+      <label class="drop" id="drop">
+        <input type="file" id="files" accept=".pdf,.docx" multiple hidden>
+        <b>Drop CVs here</b> or click to choose · PDF / DOCX, several at once
+      </label>
+      <div class="upload-results" id="uploadResults"></div>
+    </div>
+
     <div class="card">
-      <div class="hd"><h2>Upload CVs</h2></div>
-      <div class="bd">
-        <div class="row" style="margin-bottom:10px">
-          <label for="role" class="muted">Role applied for</label>
-          <select id="role" style="width:auto">
-            <option value="PM">Product Manager (PM)</option>
-            <option value="SPM">Senior Product Manager (SPM)</option>
-          </select>
+      <div class="list-hd">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="seg" id="seg">
+            <button data-tab="PM" class="on">PM ranking</button>
+            <button data-tab="SPM">SPM ranking</button>
+          </div>
+          <input type="text" id="search" placeholder="Search" style="flex:1;padding:5px 9px">
         </div>
-        <label class="drop" id="drop">
-          <input type="file" id="files" accept=".pdf,.docx" multiple hidden>
-          <div><b>Drop PDF / DOCX files here</b> or click to choose. You can pick several at once.</div>
-        </label>
-        <div class="upload-results" id="uploadResults"></div>
+        <div class="chips" id="chips"></div>
       </div>
+      <div class="list" id="list"></div>
+      <div class="list-ft"><span><kbd>J</kbd>/<kbd>K</kbd> next / previous</span><span><kbd>F</kbd> move forward</span><span><kbd>P</kbd> pass</span></div>
     </div>
+  </aside>
 
-    <div class="card" style="margin-top:16px">
-      <div class="hd">
-        <div class="tabs">
-          <button class="tab active" data-tab="PM">PM</button>
-          <button class="tab" data-tab="SPM">SPM</button>
-        </div>
-        <span class="muted small" id="tabHint" style="margin-left:auto"></span>
-      </div>
-      <table>
-        <thead><tr>
-          <th style="width:32px">#</th><th>Candidate</th><th class="num" id="thScore">PM fit</th>
-          <th>Relocation</th><th>Status</th><th class="num" id="thOther">SPM fit</th>
-        </tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="emptyList" class="empty" hidden>No candidates yet. Upload CVs above.</div>
-    </div>
-  </section>
-
-  <section>
-    <div class="card" id="detail"><div class="empty">Select a candidate to see scores, evidence, the interview brief and email drafts.</div></div>
-  </section>
+  <section class="card detail" id="detail"><div class="empty">Pick a candidate to review.</div></section>
 </main>
+
 <div class="toast" id="toast"></div>
 <div id="login" class="login" hidden>
   <form class="card login-box" id="loginForm">
-    <h2 style="font-size:16px;margin-bottom:4px">Kargo Hiring Dashboard</h2>
-    <p class="muted small" style="margin:0 0 14px">Enter the dashboard password.</p>
+    <h2 style="font-size:16px;margin:0 0 4px">Kargo Hiring</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Enter the dashboard password.</p>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required>
     <button class="primary" style="width:100%;margin-top:10px">Log in</button>
-    <div id="loginErr" class="small" style="color:var(--bad);margin-top:8px"></div>
+    <div id="loginErr" style="color:var(--bad);font-size:12px;margin-top:8px"></div>
   </form>
 </div>
 
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let CFG = null, TAB = "PM", LIST = [], SEL = null, DETAIL = null, DIRTY = {};
+let CFG = null, TAB = "PM", FILTER = "all", QUERY = "", LIST = [], SEL = null, DETAIL = null, DIRTY = false;
 const ROLE_LABEL = { PM: "Product Manager", SPM: "Senior Product Manager" };
-const STATUS_LABEL = { new: "Processing", scored: "Scored", invite_ready: "Invite ready", reject_ready: "Reject ready", sent: "Sent", failed: "Failed" };
+const ACTIONABLE = ["scored", "invite_ready", "reject_ready"];
+const FILTERS = [
+  ["all", "All", () => true],
+  ["review", "To review", c => c.status === "scored"],
+  ["ready", "Ready to send", c => c.status === "invite_ready" || c.status === "reject_ready"],
+  ["sent", "Sent", c => c.status === "sent"],
+  ["processing", "Processing", c => c.status === "new"],
+  ["failed", "Failed", c => c.status === "failed"],
+];
 
 function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms); }
 async function api(path, opts = {}) {
@@ -183,41 +245,42 @@ async function api(path, opts = {}) {
   if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
   return body;
 }
+const post = (path, data) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data || {}) });
 
+// ---------------- login ----------------
 function showLogin() { $("#login").hidden = false; $("#pw").focus(); clearTimeout(loadList._h); }
 $("#loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   $("#loginErr").textContent = "";
-  try {
-    await api("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("#pw").value }) });
-    $("#pw").value = ""; $("#login").hidden = true; boot();
-  } catch (err) { $("#loginErr").textContent = err.message; }
+  try { await post("/api/login", { password: $("#pw").value }); $("#pw").value = ""; $("#login").hidden = true; boot(); }
+  catch (err) { $("#loginErr").textContent = err.message; }
 });
 $("#btnLogout").onclick = async () => { await api("/api/logout", { method: "POST" }); showLogin(); };
 
+// ---------------- config + list ----------------
 async function loadConfig() {
   CFG = await api("/api/config");
   const b = $("#modeBadge");
   b.className = "badge " + (CFG.test_mode ? "test" : "live");
-  b.textContent = CFG.test_mode ? `TEST MODE · all email goes to ${CFG.founder_email || "(FOUNDER_EMAIL not set)"}` : "LIVE · emails go to candidates";
-  $("#modelBadge").textContent = CFG.model;
+  b.textContent = CFG.test_mode ? `Test mode · emails go to ${CFG.founder_email || "(FOUNDER_EMAIL not set)"}` : "Live · emails go to candidates";
+  b.title = `Model: ${CFG.model}`;
   const a = [];
-  if (!CFG.llm_ready) a.push(`<div class="alert bad">GEMINI_API_KEY is not set (in <code>.env</code> locally, or the Vercel project's environment variables), so CVs can't be scored.</div>`);
-  if (!CFG.resend_ready) a.push(`<div class="alert">RESEND_API_KEY is not set. You can score and draft, but Send will fail.</div>`);
-  if (CFG.test_mode && !CFG.founder_email) a.push(`<div class="alert">TEST_MODE is on but FOUNDER_EMAIL is empty. Test sends need it.</div>`);
+  if (!CFG.llm_ready) a.push(`<div class="alert bad">GEMINI_API_KEY is not set, so CVs can't be scored.</div>`);
+  if (!CFG.resend_ready) a.push(`<div class="alert">RESEND_API_KEY is not set. You can review and draft, but sending will fail.</div>`);
+  if (CFG.test_mode && !CFG.founder_email) a.push(`<div class="alert">Test mode is on but FOUNDER_EMAIL is empty, so test sends have nowhere to go.</div>`);
   $("#alerts").innerHTML = a.join("");
 }
 
 async function loadList() {
   const d = await api("/api/candidates");
   LIST = d.candidates;
-  const aw = $("#cAwait");
-  aw.querySelector("b").textContent = d.counts.awaiting_reply;
-  aw.className = "counter " + (d.counts.awaiting_reply ? "nonzero" : "zero");
-  $("#cProc").textContent = d.counts.processing;
-  $("#cSent").textContent = d.counts.sent;
+  const set = (id, n, cls) => { const el = $(id); el.querySelector("b").textContent = n; if (cls) el.className = "stat " + (n ? cls : "done"); };
+  set("#sReview", LIST.filter(c => c.status === "scored").length);
+  set("#sReady", LIST.filter(c => c.status === "invite_ready" || c.status === "reject_ready").length);
+  set("#sAwait", d.counts.awaiting_reply, "hot");
+  set("#sSent", d.counts.sent);
   renderList();
-  if (SEL && !Object.keys(DIRTY).length) {
+  if (SEL && !DIRTY) {
     const c = LIST.find(x => x.id === SEL);
     if (c && DETAIL && (c.status !== DETAIL.status || c.stage !== DETAIL.stage)) loadDetail(SEL);
   }
@@ -226,199 +289,252 @@ async function loadList() {
   loadList._h = setTimeout(loadList, d.counts.processing ? 3000 : 15000);
 }
 
-function scoreOf(c, role) { return role === "PM" ? c.pm_score : c.spm_score; }
+const scoreOf = (c, role) => role === "PM" ? c.pm_score : c.spm_score;
+const otherRole = r => r === "PM" ? "SPM" : "PM";
+const ranked = () => [...LIST].sort((a, b) => (scoreOf(b, TAB) ?? -1) - (scoreOf(a, TAB) ?? -1) || a.id - b.id);
+
+function visible() {
+  const f = FILTERS.find(x => x[0] === FILTER)[2], q = QUERY.toLowerCase();
+  return ranked().filter(c => f(c) && (!q || `${c.name || ""} ${c.filename} ${c.city || ""}`.toLowerCase().includes(q)));
+}
+
+function statusPill(c) {
+  if (c.status === "new") return c.stage === "retry"
+    ? `<span class="pill wait" title="${esc(c.error || "")}">⏳ Gemini busy</span>`
+    : `<span class="pill wait"><span class="spin"></span>${esc(c.stage || "queued")}</span>`;
+  if (c.status === "sent") return `<span class="pill sent">${c.decision === "invite" ? "Invited" : "Rejected"} ✓</span>`;
+  if (c.status === "invite_ready") return `<span class="pill invite">Send invite</span>`;
+  if (c.status === "reject_ready") return `<span class="pill reject">Send rejection</span>`;
+  if (c.status === "failed") return `<span class="pill failed">Failed</span>`;
+  return `<span class="pill review">To review</span>`;
+}
 
 function renderList() {
-  const other = TAB === "PM" ? "SPM" : "PM";
-  $("#thScore").textContent = `${TAB} fit`;
-  $("#thOther").textContent = `${other} fit`;
-  const rows = [...LIST].sort((a, b) => (scoreOf(b, TAB) ?? -1) - (scoreOf(a, TAB) ?? -1) || a.id - b.id);
-  const applied = rows.filter(c => c.role_applied === TAB).length;
-  $("#tabHint").textContent = `${rows.length} candidates ranked on the ${TAB} rubric · ${applied} applied for ${TAB}`;
-  $("#emptyList").hidden = rows.length > 0;
-  let rank = 0;
-  $("#rows").innerHTML = rows.map(c => {
-    const s = scoreOf(c, TAB), o = scoreOf(c, other);
-    const hasScore = s != null;
-    if (hasScore) rank++;
-    const warn = (c.warnings || []).length ? ` <span title="${esc((c.warnings||[]).join("\n"))}" class="small" style="color:var(--warn)">⚠</span>` : "";
-    const better = hasScore && o != null && o - s >= 10 ? ` <span class="pill" title="Scores notably higher on the ${other} rubric">better as ${other}?</span>` : "";
-    const status = c.status === "new"
-      ? (c.stage === "retry" ? `<span class="pill new" title="${esc(c.error || "")}">⏳ Gemini busy, retrying</span>`
-         : `<span class="pill new"><span class="spin"></span> ${esc(c.stage || "queued")}</span>`)
-      : `<span class="pill ${c.status}">${STATUS_LABEL[c.status] || c.status}</span>`;
-    return `<tr data-id="${c.id}" class="${c.id === SEL ? "sel" : ""}">
-      <td class="muted">${hasScore ? rank : "–"}</td>
-      <td><b>${esc(c.name || c.filename)}</b>${warn}<br>
-        <span class="small muted">applied ${c.role_applied}${c.city ? " · " + esc(c.city) : ""}</span>${better}
-        ${c.status === "failed" ? `<div class="small" style="color:var(--bad)">${esc((c.error || "").slice(0, 120))}</div>` : ""}</td>
-      <td class="num">${hasScore ? `<span class="pct">${s.toFixed(0)}%</span><div class="bar"><i style="width:${s}%"></i></div>` : "–"}</td>
-      <td>${c.relocation ? `<span class="pill ${c.relocation}">${c.relocation}</span>` : "–"}</td>
-      <td>${status}</td>
-      <td class="num muted">${o != null ? o.toFixed(0) + "%" : "–"}</td>
-    </tr>`;
+  const chips = FILTERS.map(([id, label, f]) => {
+    const n = LIST.filter(f).length;
+    if (id !== "all" && !n && FILTER !== id) return "";
+    return `<button class="chip ${FILTER === id ? "on" : ""}" data-f="${id}">${label}<span>${n}</span></button>`;
   }).join("");
+  $("#chips").innerHTML = chips;
+  const rankOf = new Map(); let r = 0;
+  ranked().forEach(c => { if (scoreOf(c, TAB) != null) rankOf.set(c.id, ++r); });
+  const rows = visible(), other = otherRole(TAB);
+  if (!LIST.length) { $("#list").innerHTML = `<div class="empty">No candidates yet. Drop CVs above to start.</div>`; return; }
+  if (!rows.length) { $("#list").innerHTML = `<div class="empty">Nothing here.</div>`; return; }
+  $("#list").innerHTML = rows.map(c => {
+    const s = scoreOf(c, TAB), o = scoreOf(c, other);
+    const sub = [`applied ${c.role_applied}`, c.city, o != null ? `${other} ${o.toFixed(0)}%` : ""].filter(Boolean).map(esc).join(" · ");
+    const flags = (c.relocation && c.relocation !== "pass" ? ` <span class="pill ${c.relocation}" title="Relocation gate">reloc. ${c.relocation}</span>` : "")
+      + (s != null && o != null && o - s >= 10 ? ` <span class="pill" title="Scores notably higher on the ${other} rubric">better as ${other}?</span>` : "")
+      + ((c.warnings || []).length ? ` <span title="${esc(c.warnings.join("\n"))}" style="color:var(--warn)">⚠</span>` : "");
+    return `<div class="item ${c.id === SEL ? "sel" : ""}" data-id="${c.id}">
+      <div class="rank">${rankOf.get(c.id) || "–"}</div>
+      <div style="min-width:0"><div class="nm">${esc(c.name || c.filename)}</div><div class="sub">${sub}${flags}</div>
+        ${c.status === "failed" ? `<div class="sub" style="color:var(--bad)">${esc((c.error || "").slice(0, 90))}</div>` : ""}</div>
+      <div class="right">${s != null ? `<span class="fit">${s.toFixed(0)}%</span><div class="bar"><i style="width:${s}%"></i></div>` : ""}${statusPill(c)}</div>
+    </div>`;
+  }).join("");
+  const sel = $(".item.sel"); if (sel) sel.scrollIntoView({ block: "nearest" });
 }
 
-$("#rows").addEventListener("click", e => {
-  const tr = e.target.closest("tr[data-id]"); if (!tr) return;
-  if (Object.keys(DIRTY).length && !confirm("You have unsaved draft edits. Discard them?")) return;
-  DIRTY = {}; SEL = +tr.dataset.id; renderList(); loadDetail(SEL);
+$("#list").addEventListener("click", e => { const it = e.target.closest(".item"); if (it) select(+it.dataset.id); });
+$("#chips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) { FILTER = b.dataset.f; renderList(); } });
+$("#search").addEventListener("input", e => { QUERY = e.target.value; renderList(); });
+$("#seg").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  TAB = b.dataset.tab; document.querySelectorAll("#seg button").forEach(x => x.classList.toggle("on", x === b));
+  renderList(); if (DETAIL) renderDetail();
 });
-document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
-  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === b));
-  TAB = b.dataset.tab; renderList(); if (DETAIL) renderDetail();
-}));
 
+async function select(id) {
+  if (id === SEL) return;
+  await saveDirty();
+  SEL = id; renderList(); loadDetail(id);
+}
 async function loadDetail(id) {
+  const fresh = !DETAIL || DETAIL.id !== id;
   DETAIL = await api(`/api/candidates/${id}`);
+  if (DETAIL.id !== SEL) return;
   renderDetail();
+  if (fresh && $("#detail").getBoundingClientRect().top < 0) window.scrollTo({ top: 0 });
 }
 
-function dots(n) { return `<span class="dots">${"●".repeat(n)}<span class="off">${"●".repeat(5 - n)}</span></span>`; }
-
-function critBlock(detail) {
-  if (!detail) return `<div class="muted">Not scored yet.</div>`;
-  return detail.criteria.map(c => `<div class="crit">
-    <div class="top"><span>${esc(c.name)} <span class="muted small">· ${c.weight}%</span></span><span>${dots(c.score)} <span class="small">${c.score}/5</span></span></div>
-    <div class="ev"><q>${esc(c.evidence)}</q></div>
-    <div class="why">${esc(c.reason)}</div></div>`).join("");
+function step(delta) {
+  const rows = visible(); if (!rows.length) return;
+  const i = rows.findIndex(c => c.id === SEL);
+  const next = rows[Math.max(0, Math.min(rows.length - 1, i < 0 ? 0 : i + delta))];
+  if (next) select(next.id);
 }
+function nextActionable() {
+  const rows = ranked(), i = rows.findIndex(c => c.id === SEL);
+  return [...rows.slice(i + 1), ...rows.slice(0, i)].find(c => ACTIONABLE.includes(c.status));
+}
+
+// ---------------- detail ----------------
+const dots = n => `<span class="dots">${"●".repeat(n)}<span class="off">${"●".repeat(5 - n)}</span></span>`;
 
 function renderDetail() {
   const c = DETAIL; if (!c) return;
-  const el = $("#detail");
-  const sent = c.status === "sent";
-  const scored = !["new", "failed"].includes(c.status);
-  const showRole = TAB;
-  const det = showRole === "PM" ? c.pm_detail : c.spm_detail;
-  const pct = showRole === "PM" ? c.pm_score : c.spm_score;
-  const other = showRole === "PM" ? "SPM" : "PM";
-  const otherPct = other === "PM" ? c.pm_score : c.spm_score;
-  const b = c.brief;
-  const recipient = CFG.test_mode ? `${CFG.founder_email || "FOUNDER_EMAIL"} (test; subject tagged → ${c.email || "no email"})` : (c.email || "no email on CV");
+  const sent = c.status === "sent", scored = !["new", "failed"].includes(c.status);
+  const other = otherRole(TAB), pct = scoreOf(c, TAB), otherPct = scoreOf(c, other);
+  const det = TAB === "PM" ? c.pm_detail : c.spm_detail, b = c.brief, kind = c.decision;
+  const recipient = CFG.test_mode ? `${CFG.founder_email || "FOUNDER_EMAIL"} (test mode, meant for ${c.email || "no email on CV"})` : (c.email || "no email on CV");
+  const contact = [
+    ["Email", c.email ? esc(c.email) : `<span style="color:var(--bad)">not found</span>`],
+    c.phone && ["Phone", esc(c.phone)],
+    c.city && ["Location", esc(c.city)],
+    ...(c.links || []).map(l => ["Link", `<a href="${esc(/^https?:/.test(l) ? l : "https://" + l)}" target="_blank" rel="noopener">${esc(l.replace(/^https?:\/\/(www\.)?/, ""))}</a>`]),
+  ].filter(Boolean).map(([k, v]) => `<div><span>${k}</span> <b>${v}</b></div>`).join("");
 
-  el.innerHTML = `
-  <div class="hd">
-    <div><h2 style="font-size:16px">${esc(c.name || c.filename)}</h2>
-    <div class="small muted">Applied for ${ROLE_LABEL[c.role_applied]} · <a href="/api/candidates/${c.id}/file" target="_blank">original CV</a></div></div>
-    <div style="margin-left:auto" class="row">
-      ${c.status === "failed" || c.status === "new" ? "" : `<span class="pill ${c.status}">${STATUS_LABEL[c.status]}</span>`}
-      ${!sent && c.status !== "new" ? `<button id="btnRetry" title="Re-extract and re-score">Re-score</button>` : ""}
-    </div>
-  </div>
-  <div class="bd">
-    ${c.status === "new" ? `<div class="alert" style="margin:0 0 12px">${c.stage === "retry" ? "⏳ " + esc(c.error || "Gemini is busy. Retrying shortly.") : `<span class="spin"></span> ${esc(c.stage || "queued")}…`}</div>` : ""}
-    ${c.status === "failed" ? `<div class="alert bad" style="margin:0 0 12px"><b>Failed:</b> ${esc(c.error)}</div>`
-      : c.error && c.status !== "new" ? `<div class="alert" style="margin:0 0 12px">${esc(c.error)}</div>` : ""}
-    <div class="kv">
-      <div>Email</div><div>${esc(c.email) || '<span style="color:var(--bad)">not found</span>'}</div>
-      <div>Phone</div><div>${esc(c.phone) || "–"}</div>
-      <div>Location</div><div>${esc(c.city) || "–"}</div>
-      <div>Links</div><div>${(c.links || []).map(l => esc(l)).join("<br>") || "–"}</div>
-      <div>Relocation</div><div>${c.relocation ? `<span class="pill ${c.relocation}">${c.relocation}</span> <span class="small muted">${esc(c.relocation_note)}</span>` : "–"} <span class="small muted">(gate, not scored)</span></div>
-    </div>
-    ${(c.warnings || []).length ? `<ul class="warnlist">${c.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
+  let notice = "";
+  if (c.status === "new") notice = `<div class="alert">${c.stage === "retry" ? "⏳ " + esc(c.error || "Gemini is busy. Retrying shortly.") : `<span class="spin"></span> ${esc(c.stage || "queued")}…`}</div>`;
+  else if (c.status === "failed") notice = `<div class="alert bad"><b>Couldn't score this CV.</b> ${esc(c.error)} <button id="btnRetry" style="margin-left:8px">Try again</button></div>`;
+  else if (c.error) notice = `<div class="alert">${esc(c.error)}</div>`;
 
-    ${scored ? `
-    <h3>Interview brief</h3>
-    <div class="brief">${b ? `<p>${esc(b.who)}</p><p><b>Why here:</b> ${esc(b.why_ranked)}</p>
-      <b>Probe in the interview</b><ol>${b.probes.map(p => `<li>${esc(p)}</li>`).join("")}</ol>` : `<span class="muted">No brief yet.</span>`}
-    </div>
-
-    <h3>${showRole} rubric · <span style="color:var(--ink)">${pct != null ? pct.toFixed(1) + "%" : "–"}</span>
-      <span class="muted" style="text-transform:none;letter-spacing:0">&nbsp;(${other}: ${otherPct != null ? otherPct.toFixed(1) + "%" : "–"}, switch tabs to see it)</span></h3>
-    ${critBlock(det)}
-    <div class="small muted">Weighted % = Σ(score × weight) / 5, calculated by the backend. Scored by ${esc(c.model || "")}.</div>
-
-    <h3>Decision</h3>
-    <div class="decide">
-      <div class="row">
-        <button class="go ${c.decision === "invite" ? "on" : ""}" id="btnInvite" ${sent ? "disabled" : ""}>Move forward</button>
-        <button class="stop ${c.decision === "reject" ? "on" : ""}" id="btnReject" ${sent ? "disabled" : ""}>Pass</button>
-        <input type="text" id="note" maxlength="300" placeholder="Optional one-line note (saved with a timestamp)" value="${esc(c.decision_note || "")}" style="flex:1;min-width:180px" ${sent ? "disabled" : ""}>
+  const emailSec = !scored ? "" : sent ? `
+    <div class="sec"><h3><span class="n done">2</span> Email sent</h3>
+      <div class="sent-box">${kind === "invite" ? "Invite" : "Rejection"} sent ${new Date(c.sent_at).toLocaleString()} to ${esc(c.sent_to)}
+        <pre><b>${esc(c.sent_subject)}</b>\n\n${esc(c[kind + "_body"])}</pre></div></div>`
+    : !kind ? `
+    <div class="sec dim"><h3><span class="n">2</span> Email</h3>
+      <div class="placeholder">Choose <b>Move forward</b> or <b>Pass</b> and the matching email appears here, ready to edit and send.</div></div>`
+    : `
+    <div class="sec"><h3><span class="n">2</span> ${kind === "invite" ? "Invite email" : "Rejection email"}</h3>
+      <div class="email-hd">
+        <span class="saved" id="saved"></span>
+        <select id="tpl" title="Replace this email with a standard template">
+          <option value="">Use a template…</option>
+          ${((CFG.templates || {})[kind] || []).map(t => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join("")}
+        </select>
+        <button class="ghost" id="btnRedraft" title="Ask Gemini for a tailored draft. If it's unavailable, your current draft is kept.">↻ Rewrite with AI</button>
       </div>
-      ${c.decided_at ? `<div class="small muted" style="margin-top:6px">Decided ${new Date(c.decided_at).toLocaleString()}</div>` : ""}
+      <div class="field-label">Subject</div>
+      <input type="text" id="subj" value="${esc(c[kind + "_subject"])}">
+      <div class="field-label" style="margin-top:10px">Message</div>
+      <textarea id="body">${esc(c[kind + "_body"])}</textarea>
+      <div class="send-bar">
+        <div class="to">To: ${esc(recipient)}</div>
+        <button class="primary" id="btnSend">Send ${kind === "invite" ? "invite" : "rejection"}</button>
+      </div>
+      ${c.send_error ? `<div class="alert bad" style="margin-top:8px">${esc(c.send_error)}</div>` : ""}
+    </div>`;
+
+  $("#detail").innerHTML = `
+  <div class="d-head">
+    <div style="min-width:0;flex:1">
+      <h2>${esc(c.name || c.filename)}</h2>
+      <div class="d-meta">Applied for ${ROLE_LABEL[c.role_applied]} · <a href="/api/candidates/${c.id}/file" target="_blank">Open CV ↗</a>
+        ${c.relocation ? ` · <span class="pill ${c.relocation}" title="${esc(c.relocation_note)}">Relocation: ${c.relocation}</span>` : ""}</div>
+      <div class="d-contact">${contact}</div>
+      ${(c.warnings || []).length ? `<ul class="warnlist">${c.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
     </div>
+    ${pct != null ? `<div class="big"><b>${pct.toFixed(0)}%</b><span>${TAB} fit · ${other} ${otherPct != null ? otherPct.toFixed(0) + "%" : "–"}</span></div>` : ""}
+  </div>
+  ${notice ? `<div class="sec" style="padding-bottom:0;border:none">${notice}</div>` : ""}
 
-    ${["invite", "reject"].map(k => `
-    <div class="draft ${c.decision === k ? "chosen" : ""}">
-      <div class="row" style="justify-content:space-between"><label>${k === "invite" ? "Invite draft" : "Rejection draft"}</label>
-        <span class="row"><span class="small muted" id="saved-${k}"></span>
-        ${!sent ? `<select id="tpl-${k}" class="small" style="width:auto" title="Replace this draft with a standard template">
-          <option value="">Start from template…</option>
-          ${((CFG.templates || {})[k] || []).map(t => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join("")}
-        </select>` : ""}</span></div>
-      <input type="text" id="subj-${k}" value="${esc(c[k + "_subject"])}" style="margin:8px 0" ${sent ? "disabled" : ""}>
-      <textarea id="body-${k}" ${sent ? "disabled" : ""}>${esc(c[k + "_body"])}</textarea>
-      ${!sent ? `<div class="row" style="margin-top:8px"><button id="save-${k}">Save edits</button></div>` : ""}
-    </div>`).join("")}
-    ${!sent ? `<div class="row" style="margin-top:8px"><button id="btnRedraft" class="small">Regenerate both with AI</button></div>` : ""}
+  ${scored ? `
+  <div class="sec brief"><h3>Interview brief</h3>
+    ${b ? `<p>${esc(b.who)}</p><p><b>Why this rank:</b> ${esc(b.why_ranked)}</p>
+      <b>Ask about</b><ol>${b.probes.map(p => `<li>${esc(p)}</li>`).join("")}</ol>`
+      : `<div class="placeholder">No AI brief (Gemini was unavailable). The evidence below still applies.</div>`}
+  </div>
+  <details class="sec" ${kind ? "" : "open"}><summary><h3>Evidence · ${TAB} rubric</h3></summary>
+    ${det ? det.criteria.map(x => `<div class="crit"><div class="name">${esc(x.name)} <span class="w">${x.weight}%</span></div><div>${dots(x.score)}</div>
+      <div class="ev"><q>${esc(x.evidence)}</q> ${esc(x.reason)}</div></div>`).join("") : `<div class="placeholder">Not scored yet.</div>`}
+    <div style="font-size:12px;color:var(--faint);margin-top:8px">Weighted % calculated by the backend · scored by ${esc(c.model || "")} ·
+      switch to ${other} ranking to see the ${other} rubric · <button class="ghost" id="btnRescore" style="padding:2px 6px;font-size:12px" ${sent ? "hidden" : ""}>Re-score</button></div>
+  </details>
 
-    <h3>Send</h3>
-    ${sent ? `<div class="alert" style="margin:0;background:var(--good-bg);color:var(--good)">Sent ${new Date(c.sent_at).toLocaleString()} to ${esc(c.sent_to)}<br><span class="small">Subject: ${esc(c.sent_subject)} · Resend id ${esc(c.resend_id)}</span></div>`
-      : `<div class="row"><button class="primary" id="btnSend" ${c.decision ? "" : "disabled"}>Send ${c.decision === "invite" ? "invite" : c.decision === "reject" ? "rejection" : "email"}</button>
-        <span class="small muted">${c.decision ? "To: " + esc(recipient) : "Choose Move forward or Pass first."}</span></div>`}
-    ${c.send_error && !sent ? `<div class="alert bad" style="margin:8px 0 0">${esc(c.send_error)}</div>` : ""}
-    ` : ""}
+  <div class="sec"><h3><span class="n ${kind ? "done" : ""}">1</span> Decide</h3>
+    <div class="decide">
+      <button class="choice fwd ${kind === "invite" ? "on" : ""}" id="btnInvite" ${sent ? "disabled" : ""}>✓ Move forward<small>Send an interview invite</small></button>
+      <button class="choice pass ${kind === "reject" ? "on" : ""}" id="btnReject" ${sent ? "disabled" : ""}>✕ Pass<small>Send a kind rejection</small></button>
+    </div>
+    <input type="text" class="note" id="note" maxlength="300" placeholder="Optional note for the record" value="${esc(c.decision_note || "")}" ${sent ? "disabled" : ""}>
+  </div>
+  ${emailSec}` : ""}
 
-    <h3>Audit trail</h3>
+  <details class="sec"><summary><h3>Activity</h3></summary>
     <div class="events">${(c.events || []).map(e => `<div>${new Date(e.ts).toLocaleString()} · <b>${esc(e.action)}</b> ${esc(e.detail)}</div>`).join("")}</div>
-  </div>`;
+  </details>`;
 
   const on = (id, fn) => { const x = $("#" + id); if (x) x.onclick = fn; };
-  on("btnRetry", async () => { await api(`/api/candidates/${c.id}/retry`, { method: "POST" }); toast("Re-scoring…"); loadList(); loadDetail(c.id); });
-  on("btnRedraft", async () => {
-    const btn = $("#btnRedraft"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Regenerating…`;
-    try { DETAIL = await api(`/api/candidates/${c.id}/redraft`, { method: "POST" }); DIRTY = {}; toast(DETAIL.error ? "Gemini unavailable: empty drafts filled from templates" : "New drafts ready", 5000); renderDetail(); }
-    catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = "Regenerate both with AI"; }
-  });
-  const decide = async d => {
-    await saveDirty();
-    try { DETAIL = await api(`/api/candidates/${c.id}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: d, note: $("#note").value }) }); renderDetail(); loadList(); }
-    catch (e) { toast(e.message); }
-  };
+  const rescore = async () => { await api(`/api/candidates/${c.id}/retry`, { method: "POST" }); toast("Re-scoring…"); loadList(); loadDetail(c.id); };
+  on("btnRetry", rescore);
+  on("btnRescore", rescore);
   on("btnInvite", () => decide("invite"));
   on("btnReject", () => decide("reject"));
-  ["invite", "reject"].forEach(k => {
-    on("save-" + k, () => saveDraft(k));
-    const tpl = $("#tpl-" + k);
-    if (tpl) tpl.onchange = async () => {
-      const id = tpl.value; if (!id) return;
-      const hasText = $("#body-" + k).value.trim();
-      if (hasText && !confirm("Replace this draft with the template? Your current text will be lost.")) { tpl.value = ""; return; }
-      try { DETAIL = await api(`/api/candidates/${c.id}/template`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ template_id: id }) });
-            delete DIRTY[k]; renderDetail(); toast("Template applied. Edit it before sending."); }
-      catch (e) { toast(e.message); tpl.value = ""; }
-    };
-    ["subj-" + k, "body-" + k].forEach(id => { const x = $("#" + id); if (x) x.oninput = () => { DIRTY[k] = true; $("#saved-" + k).textContent = "unsaved"; }; });
-  });
-  on("btnSend", async () => {
+  on("btnSend", send);
+  on("btnRedraft", async () => {
+    const btn = $("#btnRedraft"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Rewriting…`;
     await saveDirty();
-    const kind = c.decision === "invite" ? "invite" : "rejection";
-    if (!confirm(`Send the ${kind} email to ${recipient}?`)) return;
-    const btn = $("#btnSend"); btn.disabled = true; btn.textContent = "Sending…";
-    try { DETAIL = await api(`/api/candidates/${c.id}/send`, { method: "POST" }); toast("Sent ✓"); renderDetail(); loadList(); }
-    catch (e) { toast("Send failed: " + e.message, 6000); loadDetail(c.id); }
+    try { DETAIL = await api(`/api/candidates/${c.id}/redraft`, { method: "POST" }); toast(DETAIL.error ? "Gemini unavailable. Your draft was kept." : "New AI draft ready"); renderDetail(); }
+    catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = "↻ Rewrite with AI"; }
   });
+  const tpl = $("#tpl");
+  if (tpl) tpl.onchange = async () => {
+    const id = tpl.value; if (!id) return;
+    if ($("#body").value.trim() && !confirm("Replace this email with the template?")) { tpl.value = ""; return; }
+    try { DIRTY = false; DETAIL = await post(`/api/candidates/${c.id}/template`, { template_id: id }); renderDetail(); toast("Template applied"); }
+    catch (e) { toast(e.message); tpl.value = ""; }
+  };
+  ["subj", "body"].forEach(id => { const x = $("#" + id); if (x) { x.oninput = () => { DIRTY = true; $("#saved").textContent = "Unsaved"; }; x.onblur = saveDirty; } });
 }
 
-async function saveDraft(k) {
+async function decide(d) {
+  const c = DETAIL; if (!c || c.status === "sent" || !ACTIONABLE.includes(c.status)) return;
+  await saveDirty();
+  try {
+    DETAIL = await post(`/api/candidates/${c.id}/decision`, { decision: d, note: ($("#note") || {}).value || "" });
+    renderDetail(); loadList();
+    const subj = $("#subj"); if (subj) subj.closest(".sec").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) { toast(e.message); }
+}
+
+async function send() {
   const c = DETAIL;
-  await api(`/api/candidates/${c.id}/draft`, { method: "PUT", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kind: k, subject: $("#subj-" + k).value, body: $("#body-" + k).value }) });
-  c[k + "_subject"] = $("#subj-" + k).value; c[k + "_body"] = $("#body-" + k).value;
-  delete DIRTY[k]; const s = $("#saved-" + k); if (s) s.textContent = "saved";
+  await saveDirty();
+  const kind = c.decision === "invite" ? "invite" : "rejection";
+  const to = CFG.test_mode ? `${CFG.founder_email} (test mode)` : c.email;
+  if (!confirm(`Send the ${kind} to ${to}?`)) return;
+  const btn = $("#btnSend"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Sending…`;
+  try {
+    await api(`/api/candidates/${c.id}/send`, { method: "POST" });
+    toast(`${kind[0].toUpperCase() + kind.slice(1)} sent ✓`);
+    await loadList();
+    const next = nextActionable();
+    if (next) { SEL = null; select(next.id); } else loadDetail(c.id);
+  } catch (e) { toast("Send failed: " + e.message, 6000); loadDetail(c.id); }
 }
-async function saveDirty() { for (const k of Object.keys(DIRTY)) await saveDraft(k); }
 
-// ---- processing: the browser drives scoring, one request per CV (works on serverless hosts) ----
+async function saveDirty() {
+  const c = DETAIL, s = $("#subj"), b = $("#body");
+  if (!DIRTY || !c || !c.decision || !s || !b) return;
+  DIRTY = false;
+  try {
+    await api(`/api/candidates/${c.id}/draft`, { method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: c.decision, subject: s.value, body: b.value }) });
+    c[c.decision + "_subject"] = s.value; c[c.decision + "_body"] = b.value;
+    const sv = $("#saved"); if (sv) sv.textContent = "Saved";
+  } catch (e) { DIRTY = true; toast("Couldn't save the draft: " + e.message); }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === "j" || e.key === "ArrowDown") { e.preventDefault(); step(1); }
+  else if (k === "k" || e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+  else if (k === "f") decide("invite");
+  else if (k === "p") decide("reject");
+});
+
+// ---------------- processing: the browser drives scoring, one request per CV ----------------
 const INFLIGHT = new Set(), MAX_PARALLEL = 2;
-function isStale(c) { return c.claimed_at && Date.now() - new Date(c.claimed_at).getTime() > 6 * 60 * 1000; }
-function retryDue(c) { return c.stage === "retry" && (!c.claimed_at || Date.now() - new Date(c.claimed_at).getTime() > 62 * 1000); }
+const age = c => c.claimed_at ? Date.now() - new Date(c.claimed_at).getTime() : Infinity;
 function pump() {
-  const todo = LIST.filter(c => c.status === "new" && !INFLIGHT.has(c.id) && (c.stage === "queued" || retryDue(c) || isStale(c)))
-                   .sort((a, b) => a.id - b.id);
+  const todo = LIST.filter(c => c.status === "new" && !INFLIGHT.has(c.id)
+      && (c.stage === "queued" || (c.stage === "retry" && age(c) > 62e3) || age(c) > 6 * 60e3))
+    .sort((a, b) => a.id - b.id);
   while (INFLIGHT.size < MAX_PARALLEL && todo.length) {
     const c = todo.shift();
     INFLIGHT.add(c.id);
@@ -428,9 +544,9 @@ function pump() {
       .finally(() => { INFLIGHT.delete(c.id); loadList(); });
   }
 }
-window.addEventListener("beforeunload", e => { if (INFLIGHT.size) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", e => { if (INFLIGHT.size || DIRTY) { e.preventDefault(); e.returnValue = ""; } });
 
-// ---- upload ----
+// ---------------- upload ----------------
 const drop = $("#drop"), input = $("#files");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
 drop.addEventListener("dragleave", () => drop.classList.remove("over"));
@@ -453,7 +569,7 @@ async function upload(files) {
       const x = (await api("/api/upload", { method: "POST", body: fd })).results[0];
       lines.push(x.error ? `<div style="color:var(--bad)">✕ ${esc(x.filename)}: ${esc(x.error)}</div>`
         : x.duplicate_of ? `<div style="color:var(--warn)">↺ ${esc(x.filename)}: already uploaded (${esc(x.name || "#" + x.duplicate_of)})</div>`
-        : `<div style="color:var(--good)">✓ ${esc(x.filename)}: queued for scoring</div>`);
+        : `<div style="color:var(--good)">✓ ${esc(x.filename)}: queued</div>`);
     } catch (e) { lines.push(`<div style="color:var(--bad)">✕ ${esc(f.name)}: ${esc(e.message)}</div>`); }
     show();
     if (i % 3 === 2) loadList();  // start scoring while the rest upload
@@ -461,13 +577,14 @@ async function upload(files) {
   loadList();
 }
 
-window.addEventListener("beforeunload", e => { if (Object.keys(DIRTY).length) { e.preventDefault(); e.returnValue = ""; } });
 async function boot() {
   const s = await api("/api/session");
   $("#btnLogout").hidden = !s.login_required;
   if (!s.logged_in) return showLogin();
-  try { await loadConfig(); await loadList(); }
-  catch (e) { if (e.message !== "Please log in") $("#alerts").innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }
+  try {
+    await loadConfig(); await loadList();
+    if (!SEL) { const first = ranked().find(c => ACTIONABLE.includes(c.status)); if (first) select(first.id); }
+  } catch (e) { if (e.message !== "Please log in") $("#alerts").innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }
 }
 boot();
 </script>
