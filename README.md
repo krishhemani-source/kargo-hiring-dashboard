@@ -80,13 +80,27 @@ The two PM hires are ranked on their PM score. The other six were hired into oth
 - **No personal data reaches the LLM.** `llm._call()` runs `assert_no_pii()` on every prompt. It blocks any email, phone number or URL pattern, the candidate's full name, and any single name token in the CV part of the prompt. If redaction ever misses something, the candidate is marked `failed` with the reason and nothing is sent to the API. Location is personal data too, so the relocation gate runs in the backend from the extracted city and "willing to relocate" wording. Job locations further down the CV (e.g. "Mahindra Logistics, Mumbai") are kept because they're work history.
 - **The LLM never decides.** It returns criterion scores with evidence, plus drafts. Move forward / Pass and Send are founder-only actions, and each is logged with a timestamp and optional note (`events` table).
 - **The LLM doesn't do the maths.** Weighted % = Σ(score × weight) / 5, in `rubric.weighted_percent()`.
-- **Rejections never mention scores.** Drafts that mention %, scores or the rubric are rejected and regenerated once.
+- **Rejections never mention scores.** Drafts that mention %, scores or the rubric are rejected and regenerated once. The fixed rejection templates are checked for the same thing in tests.
+- **Gemini overloaded (503) or rate-limited (429).** The app moves straight to the next model in `GEMINI_FALLBACK_MODELS` instead of waiting on the busy one. A busy model is tried last for the next 90 s, a model that returns 404 is dropped, and each HTTP request is capped at `LLM_REQUEST_TIMEOUT_S` (40 s) so one slow model can't use up the whole budget. If every model is busy during scoring, the CV goes back in the queue and is retried automatically about a minute later (up to 4 attempts) instead of failing. If drafting fails, the scores are kept and the drafts are filled from templates.
 - **Messy CVs.** Fake-bold PDFs and edited contact headers (text pasted over text) are handled by rebuilding lines from content-stream runs. If a file fails, only that file is marked `failed` (with a Re-score button) and the rest of the batch continues. Duplicate uploads are detected by file hash.
 - **Keys** live only in `.env` (git-ignored).
 
+## Email templates
+
+`app/templates.py` has a standard template for each kind of draft. Each draft box on the dashboard has a **Start from template** picker that replaces the draft with the template and fills in the first name, role and founder name:
+
+| Invite | Rejection |
+|---|---|
+| Interview invite (45 min) | Rejection |
+| Short intro call (20 min) | Rejection, keep in touch |
+| Invite, for the other role (PM ↔ SPM) | Rejection, role is in-office in Mumbai |
+| | Rejection, role filled |
+
+If Gemini can't write the drafts, empty drafts are filled from the standard invite and the standard rejection. If the relocation gate is `fail`, the in-office rejection is used instead. A failed **Regenerate with AI** never overwrites drafts that are already there. To add a template, add an entry to `TEMPLATES`. It shows up in the picker automatically.
+
 ## Statuses
 
-`new` (processing) → `scored` → `invite_ready` / `reject_ready` → `sent`. A file that couldn't be parsed or scored is `failed`. The header counter shows how many candidates haven't heard back yet. The goal is zero.
+`new` (processing, or `retry` while waiting out an overloaded Gemini) → `scored` → `invite_ready` / `reject_ready` → `sent`. A file that couldn't be parsed or scored is `failed`. The header counter shows how many candidates haven't heard back yet. The goal is zero.
 
 ## Data
 

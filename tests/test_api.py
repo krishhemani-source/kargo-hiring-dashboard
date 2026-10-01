@@ -135,12 +135,52 @@ def test_vercel_without_database_explains(client, monkeypatch):
     assert r.status_code == 503 and "Neon" in r.json()["detail"]
 
 
-def test_draft_failure_keeps_scores(client, monkeypatch):
+def test_draft_failure_falls_back_to_templates(client, monkeypatch):
     from app import llm
-    monkeypatch.setattr(llm, "draft_brief_and_emails", lambda *a, **k: (_ for _ in ()).throw(llm.LLMError("503 overloaded")))
+    monkeypatch.setattr(llm, "draft_brief_and_emails", lambda *a, **k: (_ for _ in ()).throw(llm.LLMBusy("503 overloaded")))
     good = (ROOT / "seed" / "cv_06_meghna_tiwari.docx").read_bytes()
     cid = client.post("/api/upload", data={"role": "PM"}, files=[("files", ("m.docx", good))]).json()["results"][0]["id"]
     d = client.post(f"/api/candidates/{cid}/process").json()
     assert d["status"] == "scored" and d["pm_score"] is not None
-    assert "Regenerate" in d["error"] and not d["invite_body"]
+    assert "template" in d["error"]
+    assert d["invite_body"].startswith("Hi Meghna,") and "Product Manager" in d["invite_body"]
+    assert d["reject_body"].startswith("Hi Meghna,")
+    # A failed regenerate keeps the drafts that are there (e.g. the founder's edits)
+    client.put(f"/api/candidates/{cid}/draft", json={"kind": "invite", "subject": "Mine", "body": "My edit"})
+    r = client.post(f"/api/candidates/{cid}/redraft")
+    assert r.status_code == 502
+    assert client.get(f"/api/candidates/{cid}").json()["invite_body"] == "My edit"
     monkeypatch.undo()
+
+
+def test_overloaded_gemini_requeues_then_fails(client, monkeypatch):
+    from app import db, llm
+    monkeypatch.setattr(llm, "score_cv", lambda *a, **k: (_ for _ in ()).throw(llm.LLMBusy("all models 503")))
+    good = (ROOT / "seed" / "cv_02_sunita_krishnamurthy.docx").read_bytes()
+    cid = client.post("/api/upload", data={"role": "SPM"}, files=[("files", ("s.docx", good))]).json()["results"][0]["id"]
+    d = client.post(f"/api/candidates/{cid}/process").json()
+    assert d["status"] == "new" and d["stage"] == "retry" and "Retrying" in d["error"]
+    assert not db.claim(cid)  # not due yet
+    for _ in range(3):
+        assert db.claim(cid, retry_after=-5)
+        from app import pipeline
+        pipeline.process(cid)
+    d = client.get(f"/api/candidates/{cid}").json()
+    assert d["status"] == "failed" and "overloaded" in d["error"]
+    # A manual Re-score starts the count again
+    client.post(f"/api/candidates/{cid}/retry")
+    d = client.post(f"/api/candidates/{cid}/process").json()
+    assert d["stage"] == "retry"
+
+
+def test_templates_endpoint_and_apply(client):
+    cat = client.get("/api/templates").json()
+    assert {"invite", "reject"} <= set(cat) and all(len(v) >= 2 for v in cat.values())
+    good = (ROOT / "seed" / "cv_07_lavanya_iyer.docx").read_bytes()
+    cid = client.post("/api/upload", data={"role": "PM"}, files=[("files", ("l.docx", good))]).json()["results"][0]["id"]
+    client.post(f"/api/candidates/{cid}/process")
+    d = client.post(f"/api/candidates/{cid}/template", json={"template_id": "invite_other_role"}).json()
+    assert "Senior Product Manager" in d["invite_body"] and d["invite_body"].startswith("Hi Lavanya,")
+    assert d["reject_body"] == "Hi Lavanya, thank you."  # the other draft is untouched
+    assert client.post(f"/api/candidates/{cid}/template", json={"template_id": "nope"}).status_code == 400
+    assert any(e["action"] == "template_used" for e in d["events"])

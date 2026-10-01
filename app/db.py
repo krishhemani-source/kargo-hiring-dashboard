@@ -16,7 +16,7 @@ COLUMNS = """
   sha256 TEXT UNIQUE,
   role_applied TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'new',   -- new -> scored -> invite_ready/reject_ready -> sent  (or failed)
-  stage TEXT,                           -- while new: queued / extracting / scoring / drafting
+  stage TEXT,                           -- while new: queued / extracting / scoring / drafting / retry
   claimed_at TEXT,
   error TEXT,
   -- personal details: stored here, never sent to the LLM
@@ -150,13 +150,17 @@ def insert_candidate(filename: str, data: bytes, sha: str, role: str) -> int:
     return rows[0]["id"]
 
 
-def claim(cid: int, stale_after: int = 330) -> bool:
-    """Atomically take a queued (or abandoned) candidate for processing. False if someone else has it."""
+RETRY_AFTER_S = 60  # wait this long before re-trying a CV that hit an overloaded Gemini
+
+
+def claim(cid: int, stale_after: int = 330, retry_after: int = RETRY_AFTER_S) -> bool:
+    """Atomically take a queued (or abandoned, or due-for-retry) candidate. False if someone else has it."""
     with connect() as run:
         rows = run(
             "UPDATE candidates SET stage='extracting', claimed_at=? "
-            "WHERE id=? AND status='new' AND (stage='queued' OR claimed_at IS NULL OR claimed_at < ?) RETURNING id",
-            (now(), cid, ago(stale_after)),
+            "WHERE id=? AND status='new' AND (stage='queued' OR claimed_at IS NULL OR claimed_at < ? "
+            "OR (stage='retry' AND claimed_at < ?)) RETURNING id",
+            (now(), cid, ago(stale_after), ago(retry_after)),
         )
     return bool(rows)
 

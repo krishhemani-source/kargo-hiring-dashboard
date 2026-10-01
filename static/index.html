@@ -244,7 +244,8 @@ function renderList() {
     const warn = (c.warnings || []).length ? ` <span title="${esc((c.warnings||[]).join("\n"))}" class="small" style="color:var(--warn)">⚠</span>` : "";
     const better = hasScore && o != null && o - s >= 10 ? ` <span class="pill" title="Scores notably higher on the ${other} rubric">better as ${other}?</span>` : "";
     const status = c.status === "new"
-      ? `<span class="pill new"><span class="spin"></span> ${esc(c.stage || "queued")}</span>`
+      ? (c.stage === "retry" ? `<span class="pill new" title="${esc(c.error || "")}">⏳ Gemini busy, retrying</span>`
+         : `<span class="pill new"><span class="spin"></span> ${esc(c.stage || "queued")}</span>`)
       : `<span class="pill ${c.status}">${STATUS_LABEL[c.status] || c.status}</span>`;
     return `<tr data-id="${c.id}" class="${c.id === SEL ? "sel" : ""}">
       <td class="muted">${hasScore ? rank : "–"}</td>
@@ -307,7 +308,7 @@ function renderDetail() {
     </div>
   </div>
   <div class="bd">
-    ${c.status === "new" ? `<div class="alert" style="margin:0 0 12px"><span class="spin"></span> ${esc(c.stage || "queued")}…</div>` : ""}
+    ${c.status === "new" ? `<div class="alert" style="margin:0 0 12px">${c.stage === "retry" ? "⏳ " + esc(c.error || "Gemini is busy. Retrying shortly.") : `<span class="spin"></span> ${esc(c.stage || "queued")}…`}</div>` : ""}
     ${c.status === "failed" ? `<div class="alert bad" style="margin:0 0 12px"><b>Failed:</b> ${esc(c.error)}</div>`
       : c.error && c.status !== "new" ? `<div class="alert" style="margin:0 0 12px">${esc(c.error)}</div>` : ""}
     <div class="kv">
@@ -343,12 +344,16 @@ function renderDetail() {
     ${["invite", "reject"].map(k => `
     <div class="draft ${c.decision === k ? "chosen" : ""}">
       <div class="row" style="justify-content:space-between"><label>${k === "invite" ? "Invite draft" : "Rejection draft"}</label>
-        <span class="small muted" id="saved-${k}"></span></div>
+        <span class="row"><span class="small muted" id="saved-${k}"></span>
+        ${!sent ? `<select id="tpl-${k}" class="small" style="width:auto" title="Replace this draft with a standard template">
+          <option value="">Start from template…</option>
+          ${((CFG.templates || {})[k] || []).map(t => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join("")}
+        </select>` : ""}</span></div>
       <input type="text" id="subj-${k}" value="${esc(c[k + "_subject"])}" style="margin:8px 0" ${sent ? "disabled" : ""}>
       <textarea id="body-${k}" ${sent ? "disabled" : ""}>${esc(c[k + "_body"])}</textarea>
       ${!sent ? `<div class="row" style="margin-top:8px"><button id="save-${k}">Save edits</button></div>` : ""}
     </div>`).join("")}
-    ${!sent ? `<div class="row" style="margin-top:8px"><button id="btnRedraft" class="small">Regenerate both drafts</button></div>` : ""}
+    ${!sent ? `<div class="row" style="margin-top:8px"><button id="btnRedraft" class="small">Regenerate both with AI</button></div>` : ""}
 
     <h3>Send</h3>
     ${sent ? `<div class="alert" style="margin:0;background:var(--good-bg);color:var(--good)">Sent ${new Date(c.sent_at).toLocaleString()} to ${esc(c.sent_to)}<br><span class="small">Subject: ${esc(c.sent_subject)} · Resend id ${esc(c.resend_id)}</span></div>`
@@ -365,8 +370,8 @@ function renderDetail() {
   on("btnRetry", async () => { await api(`/api/candidates/${c.id}/retry`, { method: "POST" }); toast("Re-scoring…"); loadList(); loadDetail(c.id); });
   on("btnRedraft", async () => {
     const btn = $("#btnRedraft"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Regenerating…`;
-    try { DETAIL = await api(`/api/candidates/${c.id}/redraft`, { method: "POST" }); DIRTY = {}; toast("New drafts ready"); renderDetail(); }
-    catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = "Regenerate both drafts"; }
+    try { DETAIL = await api(`/api/candidates/${c.id}/redraft`, { method: "POST" }); DIRTY = {}; toast(DETAIL.error ? "Gemini unavailable: empty drafts filled from templates" : "New drafts ready", 5000); renderDetail(); }
+    catch (e) { toast(e.message, 6000); btn.disabled = false; btn.textContent = "Regenerate both with AI"; }
   });
   const decide = async d => {
     await saveDirty();
@@ -377,6 +382,15 @@ function renderDetail() {
   on("btnReject", () => decide("reject"));
   ["invite", "reject"].forEach(k => {
     on("save-" + k, () => saveDraft(k));
+    const tpl = $("#tpl-" + k);
+    if (tpl) tpl.onchange = async () => {
+      const id = tpl.value; if (!id) return;
+      const hasText = $("#body-" + k).value.trim();
+      if (hasText && !confirm("Replace this draft with the template? Your current text will be lost.")) { tpl.value = ""; return; }
+      try { DETAIL = await api(`/api/candidates/${c.id}/template`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ template_id: id }) });
+            delete DIRTY[k]; renderDetail(); toast("Template applied. Edit it before sending."); }
+      catch (e) { toast(e.message); tpl.value = ""; }
+    };
     ["subj-" + k, "body-" + k].forEach(id => { const x = $("#" + id); if (x) x.oninput = () => { DIRTY[k] = true; $("#saved-" + k).textContent = "unsaved"; }; });
   });
   on("btnSend", async () => {
@@ -401,8 +415,9 @@ async function saveDirty() { for (const k of Object.keys(DIRTY)) await saveDraft
 // ---- processing: the browser drives scoring, one request per CV (works on serverless hosts) ----
 const INFLIGHT = new Set(), MAX_PARALLEL = 2;
 function isStale(c) { return c.claimed_at && Date.now() - new Date(c.claimed_at).getTime() > 6 * 60 * 1000; }
+function retryDue(c) { return c.stage === "retry" && (!c.claimed_at || Date.now() - new Date(c.claimed_at).getTime() > 62 * 1000); }
 function pump() {
-  const todo = LIST.filter(c => c.status === "new" && !INFLIGHT.has(c.id) && (c.stage === "queued" || isStale(c)))
+  const todo = LIST.filter(c => c.status === "new" && !INFLIGHT.has(c.id) && (c.stage === "queued" || retryDue(c) || isStale(c)))
                    .sort((a, b) => a.id - b.id);
   while (INFLIGHT.size < MAX_PARALLEL && todo.length) {
     const c = todo.shift();

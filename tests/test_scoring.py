@@ -64,3 +64,65 @@ def test_rejection_may_not_reveal_scores(monkeypatch):
 ])
 def test_relocation_gate(header, expected):
     assert relocation_gate(extract_details("x.pdf", header))[0] == expected
+
+
+def test_reject_templates_never_reveal_scores():
+    from app import templates
+    cand = {"name": "Zed Q", "role_applied": "SPM", "relocation": "fail"}
+    assert templates.default_for("reject", cand) == "reject_relocation"
+    for t in templates.TEMPLATES["reject"]:
+        r = templates.render(t["id"], cand)
+        assert not llm.REVEALS_SCORE.search(r["subject"] + " " + r["body"]), t["id"]
+        assert "{" not in r["body"] and r["body"].startswith("Hi Zed,")
+
+
+def _fake_gemini(monkeypatch, behaviour):
+    """behaviour: model -> exception to raise, or text to return."""
+    from types import SimpleNamespace
+    from google.genai import errors as genai_errors
+    calls = []
+
+    def generate_content(model, contents, config):
+        calls.append(model)
+        b = behaviour.get(model, "{}")
+        if isinstance(b, int):
+            raise genai_errors.APIError(b, {"error": {"code": b, "message": "high demand", "status": "UNAVAILABLE"}})
+        return SimpleNamespace(text=b, candidates=[])
+
+    fake = SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+    monkeypatch.setattr(llm, "client", lambda: fake)
+    monkeypatch.setattr(llm, "_cooling", {})
+    monkeypatch.setattr(llm, "_exhausted", set())
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    return calls
+
+
+def test_503_fails_over_to_next_model_immediately(monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "GEMINI_MODELS", ["a", "b", "c"])
+    calls = _fake_gemini(monkeypatch, {"a": 503, "b": '{"ok": 1}'})
+    assert llm._call("sys", "user", {}) == '{"ok": 1}'
+    assert calls == ["a", "b"]  # no waiting on the overloaded model
+    # The overloaded model is tried last on the next call, not first
+    calls.clear()
+    llm._call("sys", "user", {})
+    assert calls == ["b"]
+
+
+def test_all_models_overloaded_raises_busy(monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "GEMINI_MODELS", ["a", "b"])
+    calls = _fake_gemini(monkeypatch, {"a": 503, "b": 503})
+    with pytest.raises(llm.LLMBusy) as e:
+        llm._call("sys", "user", {})
+    assert "a: 503" in str(e.value) and "b: 503" in str(e.value)
+    assert calls == ["a", "b"] * 3  # three rounds with back-off between them
+
+
+def test_missing_model_is_dropped(monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "GEMINI_MODELS", ["gone", "b"])
+    calls = _fake_gemini(monkeypatch, {"gone": 404, "b": "{}"})
+    llm._call("sys", "user", {})
+    llm._call("sys", "user", {})
+    assert calls == ["gone", "b", "b"]

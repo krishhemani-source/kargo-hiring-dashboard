@@ -33,5 +33,7 @@ DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 # Each /process request must finish inside Vercel's function limit (maxDuration in vercel.json).
 LLM_CALL_BUDGET_S = int(os.getenv("LLM_CALL_BUDGET_S", "85"))
+# Per-HTTP-request cap, so one slow/overloaded model leaves time for the fallbacks.
+LLM_REQUEST_TIMEOUT_S = int(os.getenv("LLM_REQUEST_TIMEOUT_S", "40"))
 RUBRIC_PATH = ROOT / "rubric.txt"
 JD_DIR = ROOT / "jds"

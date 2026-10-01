@@ -34,8 +34,15 @@ def client() -> genai.Client:
     return _client
 
 
-_exhausted = set()  # models whose daily quota is used up (this process)
+_exhausted = set()  # models whose daily quota is used up, or that don't exist (this process)
+_cooling = {}  # model -> monotonic time until which it is skipped (overloaded / rate-limited)
+COOL_DOWN_S = 90
+TRANSIENT = (429, 500, 502, 503, 504)
 _local = threading.local()
+
+
+class LLMBusy(LLMError):
+    """Every model is overloaded or rate-limited right now. Worth retrying in a minute."""
 
 
 def models_used() -> list:
@@ -51,60 +58,79 @@ def _retry_delay(err: str, default: float) -> float:
     return min(float(m.group(1)) + 1, 60) if m else default
 
 
+def _chain() -> list:
+    """Configured models minus dead ones; models cooling down after a 503/429 go last, not away."""
+    now = time.monotonic()
+    live = [m for m in config.GEMINI_MODELS if m not in _exhausted]
+    return [m for m in live if _cooling.get(m, 0) <= now] + [m for m in live if _cooling.get(m, 0) > now]
+
+
 def _call(system: str, user: str, pii: dict) -> str:
     # Guardrail: the CV-derived part (user) is checked for name tokens too.
     assert_no_pii(system + "\n" + user, pii, cv_part=user)
-    cfg = types.GenerateContentConfig(
-        system_instruction=system,
-        response_mime_type="application/json",
-        temperature=0.2,
-        max_output_tokens=16000,
-    )
-    chain = [m for m in config.GEMINI_MODELS if m not in _exhausted]
-    if not chain:
+    if not _chain():
         raise LLMError("Every configured Gemini model is out of free-tier quota for today. "
                        "Enable billing on the key or try again tomorrow.")
-    last = None
+    gemini = client()  # raises if the key is missing; not a reason to try other models
+    errors = {}
     deadline = time.monotonic() + config.LLM_CALL_BUDGET_S
 
-    def can_wait(seconds):
-        return time.monotonic() + seconds < deadline
-
-    for model in chain:
-        if time.monotonic() > deadline:
-            break
-        for attempt in range(3):
+    # On an overloaded (503) or rate-limited (429) model, move straight to the next one instead of
+    # waiting on it. Only once every model has been tried do we back off and go round again.
+    for rnd in range(3):
+        if rnd:
+            pause = min(2 ** rnd * 2, 10)
+            if time.monotonic() + pause + 5 > deadline:
+                break
+            time.sleep(pause)
+        for model in _chain():
+            left = deadline - time.monotonic()
+            if left < 5:
+                break
+            cfg = types.GenerateContentConfig(
+                system_instruction=system,
+                response_mime_type="application/json",
+                temperature=0.2,
+                max_output_tokens=16000,
+                # A 503 can take a long time to come back; never let one model eat the whole budget.
+                http_options=types.HttpOptions(timeout=int(min(left, config.LLM_REQUEST_TIMEOUT_S) * 1000)),
+            )
             try:
-                resp = client().models.generate_content(model=model, contents=user, config=cfg)
+                resp = gemini.models.generate_content(model=model, contents=user, config=cfg)
             except genai_errors.APIError as e:
                 code, msg = getattr(e, "code", None), str(e)
-                last = f"{model}: {code} {msg[:200]}"
+                errors[model] = f"{code} {msg[:160]}"
                 if code == 429 and "PerDay" in msg:
-                    _exhausted.add(model)  # daily quota gone, next model
-                    break
-                wait = _retry_delay(msg, 10)
-                if code == 429 and attempt < 2 and can_wait(wait):
-                    time.sleep(wait)
-                    continue
-                if code in (500, 502, 503, 504) and attempt < 1 and can_wait(4):
-                    time.sleep(4)
-                    continue
-                if code in (429, 500, 502, 503, 504, 404):
-                    break  # try the next model
-                if code in (400, 401, 403) and "API key" in msg:
+                    _exhausted.add(model)  # daily quota gone for this process
+                elif code == 404:
+                    _exhausted.add(model)  # model name doesn't exist (any more)
+                elif code in TRANSIENT:
+                    _cooling[model] = time.monotonic() + (_retry_delay(msg, COOL_DOWN_S) if code == 429 else COOL_DOWN_S)
+                elif code in (400, 401, 403) and "API key" in msg:
                     raise LLMError(f"Gemini rejected the API key: {msg[:300]}") from e
-                raise LLMError(f"Gemini API error {code}: {msg[:300]}") from e
-            except Exception as e:
-                raise LLMError(f"Could not reach the Gemini API: {e}") from e
+                else:
+                    raise LLMError(f"Gemini API error {code}: {msg[:300]}") from e
+                continue
+            except Exception as e:  # timeouts and network errors: try the next model
+                errors[model] = f"{type(e).__name__}: {str(e)[:160]}"
+                _cooling[model] = time.monotonic() + COOL_DOWN_S
+                continue
             text = resp.text or ""
             if not text:
                 reason = resp.candidates[0].finish_reason if resp.candidates else getattr(resp, "prompt_feedback", None)
                 raise LLMError(f"Gemini ({model}) returned no text (finish reason: {reason})")
+            _cooling.pop(model, None)
             if not hasattr(_local, "used"):
                 _local.used = set()
             _local.used.add(model)
             return text
-    raise LLMError(f"All Gemini models failed or are rate-limited. Last error: {last}")
+        if not _chain():
+            break
+
+    tried = "; ".join(f"{m}: {e}" for m, e in errors.items()) or "no model could be tried in time"
+    if not _chain():
+        raise LLMError(f"Every configured Gemini model is out of quota or unavailable. {tried}")
+    raise LLMBusy(f"Gemini is overloaded right now (all models busy). {tried}")
 
 
 def _parse_json(text: str):

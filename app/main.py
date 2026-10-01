@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 
-from . import config, db, emailer, pipeline
+from . import config, db, emailer, pipeline, templates
 from .rubric import ROLES, load_rubrics
 
 app = FastAPI(title="Kargo Hiring Dashboard")
@@ -115,6 +115,7 @@ def get_config():
         "llm_ready": bool(os.getenv("GEMINI_API_KEY")),
         "resend_ready": bool(config.RESEND_API_KEY),
         "database": db.dialect(),
+        "templates": templates.catalog(),
         "rubrics": {role: [{"id": c.id, "name": c.name, "weight": c.weight} for c in r[role].criteria] for role in ROLES},
     }
 
@@ -230,7 +231,7 @@ class Draft(BaseModel):
 @app.put("/api/candidates/{cid}/draft")
 def save_draft(cid: int, d: Draft):
     cand = _must(cid)
-    if d.kind not in ("invite", "reject"):
+    if d.kind not in templates.KINDS:
         raise HTTPException(400, "kind must be invite or reject")
     if cand["status"] == "sent":
         raise HTTPException(409, "already sent")
@@ -263,6 +264,31 @@ def send(cid: int):
     return get_candidate(cid)
 
 
+@app.get("/api/templates")
+def list_templates():
+    return templates.catalog()
+
+
+class UseTemplate(BaseModel):
+    template_id: str
+
+
+@app.post("/api/candidates/{cid}/template")
+def use_template(cid: int, body: UseTemplate):
+    """Replace one draft (invite or rejection, decided by the template) with a standard template."""
+    cand = _must(cid)
+    if cand["status"] == "sent":
+        raise HTTPException(409, "already sent")
+    if cand["status"] in ("new", "failed"):
+        raise HTTPException(409, "candidate has not been scored yet")
+    if not templates.kind_of(body.template_id):
+        raise HTTPException(400, "unknown template")
+    t = templates.render(body.template_id, cand)
+    db.update(cid, **{f"{t['kind']}_subject": t["subject"], f"{t['kind']}_body": t["body"]})
+    db.log(cid, "template_used", f"{t['kind']}: {body.template_id}")
+    return get_candidate(cid)
+
+
 @app.post("/api/candidates/{cid}/retry")
 def retry(cid: int):
     cand = _must(cid)
@@ -279,9 +305,12 @@ def redraft(cid: int):
     if cand["status"] in ("new", "failed", "sent"):
         raise HTTPException(409, "can only redraft a scored, unsent candidate")
     try:
-        pipeline.generate_drafts(cid)
-        db.update(cid, stage=None, error=None)
+        # If Gemini fails, existing drafts are kept; only empty drafts are filled from templates.
+        if pipeline.generate_drafts(cid):
+            db.update(cid, stage=None, error=None)
+        else:
+            db.update(cid, stage=None)
     except Exception as e:
         db.update(cid, stage=None)
-        raise HTTPException(502, f"Drafting failed: {e}")
+        raise HTTPException(502, f"Drafting failed, your current drafts were kept: {e}")
     return get_candidate(cid)
