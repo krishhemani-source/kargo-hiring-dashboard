@@ -300,7 +300,7 @@ function visible() {
 
 function statusPill(c) {
   if (c.status === "new") return c.stage === "retry"
-    ? `<span class="pill wait" title="${esc(c.error || "")}">⏳ Gemini busy</span>`
+    ? `<span class="pill wait" title="Retrying automatically">⏳ Gemini busy</span>`
     : `<span class="pill wait"><span class="spin"></span>${esc(c.stage || "queued")}</span>`;
   if (c.status === "sent") return `<span class="pill sent">${c.decision === "invite" ? "Invited" : "Rejected"} ✓</span>`;
   if (c.status === "invite_ready") return `<span class="pill invite">Send invite</span>`;
@@ -330,7 +330,7 @@ function renderList() {
     return `<div class="item ${c.id === SEL ? "sel" : ""}" data-id="${c.id}">
       <div class="rank">${rankOf.get(c.id) || "–"}</div>
       <div style="min-width:0"><div class="nm">${esc(c.name || c.filename)}</div><div class="sub">${sub}${flags}</div>
-        ${c.status === "failed" ? `<div class="sub" style="color:var(--bad)">${esc((c.error || "").slice(0, 90))}</div>` : ""}</div>
+        ${c.status === "failed" ? `<div class="sub" style="color:var(--bad)">${esc(plainError(c.error).slice(0, 90))}</div>` : ""}</div>
       <div class="right">${s != null ? `<span class="fit">${s.toFixed(0)}%</span><div class="bar"><i style="width:${s}%"></i></div>` : ""}${statusPill(c)}</div>
     </div>`;
   }).join("");
@@ -371,6 +371,40 @@ function nextActionable() {
 }
 
 // ---------------- detail ----------------
+// Activity shows what happened, in plain words. Error events stay in the database but aren't shown.
+const EVENT_LABEL = {
+  uploaded: "Uploaded", extracted: "Details read from CV", scored: "Scored", retry: "Re-scored",
+  drafted: "AI drafts written", drafted_from_template: "Drafts started from a template",
+  decision: "Decision", draft_edited: "Draft edited", template_used: "Template applied", sent: "Email sent",
+};
+const TEMPLATE_LABEL = id => Object.values((CFG && CFG.templates) || {}).flat().find(t => t.id === id)?.label;
+function activity(events) {
+  const out = [];
+  for (const e of events || []) {
+    if (!EVENT_LABEL[e.action]) continue;
+    let detail = e.detail || "";
+    if (e.action === "uploaded") detail = detail.replace(/^.* for (PM|SPM)$/, "for $1");
+    if (e.action === "extracted") detail = detail === "all details found" ? "" : detail;
+    if (e.action === "template_used") detail = TEMPLATE_LABEL(detail.split(": ")[1]) || "";
+    if (e.action === "sent") detail = detail.replace(/\s*\(Resend id .*\)$/, "").replace(/^\w+ → /, "to ");
+    if (e.action === "draft_edited") detail = detail === "invite" ? "(invite email)" : "(rejection email)";
+    if (e.action === "drafted" || e.action === "drafted_from_template" || e.action === "retry") detail = "";
+    const prev = out[out.length - 1];
+    if (prev && prev.action === e.action && e.action === "draft_edited") { prev.ts = e.ts; continue; }
+    out.push({ ...e, detail });
+  }
+  return out;
+}
+// Error text for people, not stack traces.
+function plainError(msg) {
+  msg = String(msg || "");
+  if (/template/i.test(msg) && /draft/i.test(msg)) return "Gemini was busy, so these emails start from a standard template. Edit them, or try Rewrite with AI later.";
+  if (/re-scored, but new drafts/i.test(msg)) return "Re-scored. The earlier emails were kept.";
+  if (/LLMError|LLMBusy|Gemini|\b(429|50[0-4])\b|overloaded|rate.?limit|quota/i.test(msg)) return "Gemini was busy, so this CV couldn't be scored. Try again in a few minutes.";
+  if (/very little text/i.test(msg)) return "No readable text in this file (it may be a scanned image). Upload a text PDF or DOCX.";
+  return msg.replace(/^[A-Za-z]+(Error|Exception|Leak): /, "").slice(0, 200);
+}
+
 const dots = n => `<span class="dots">${"●".repeat(n)}<span class="off">${"●".repeat(5 - n)}</span></span>`;
 
 function renderDetail() {
@@ -387,9 +421,9 @@ function renderDetail() {
   ].filter(Boolean).map(([k, v]) => `<div><span>${k}</span> <b>${v}</b></div>`).join("");
 
   let notice = "";
-  if (c.status === "new") notice = `<div class="alert">${c.stage === "retry" ? "⏳ " + esc(c.error || "Gemini is busy. Retrying shortly.") : `<span class="spin"></span> ${esc(c.stage || "queued")}…`}</div>`;
-  else if (c.status === "failed") notice = `<div class="alert bad"><b>Couldn't score this CV.</b> ${esc(c.error)} <button id="btnRetry" style="margin-left:8px">Try again</button></div>`;
-  else if (c.error) notice = `<div class="alert">${esc(c.error)}</div>`;
+  if (c.status === "new") notice = `<div class="alert">${c.stage === "retry" ? "⏳ Gemini is busy. Retrying automatically in about a minute." : `<span class="spin"></span> ${esc(c.stage || "queued")}…`}</div>`;
+  else if (c.status === "failed") notice = `<div class="alert bad">${esc(plainError(c.error))} <button id="btnRetry" style="margin-left:8px">Try again</button></div>`;
+  else if (c.error) notice = `<div class="alert">${esc(plainError(c.error))}</div>`;
 
   const emailSec = !scored ? "" : sent ? `
     <div class="sec"><h3><span class="n done">2</span> Email sent</h3>
@@ -455,7 +489,7 @@ function renderDetail() {
   ${emailSec}` : ""}
 
   <details class="sec"><summary><h3>Activity</h3></summary>
-    <div class="events">${(c.events || []).map(e => `<div>${new Date(e.ts).toLocaleString()} · <b>${esc(e.action)}</b> ${esc(e.detail)}</div>`).join("")}</div>
+    <div class="events">${activity(c.events).map(e => `<div>${new Date(e.ts).toLocaleString()} · <b>${EVENT_LABEL[e.action]}</b> ${esc(e.detail)}</div>`).join("")}</div>
   </details>`;
 
   const on = (id, fn) => { const x = $("#" + id); if (x) x.onclick = fn; };
